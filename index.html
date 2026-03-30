@@ -244,16 +244,15 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
       </div>
 
       <div class="scrd">
-        <h3>📖 วิธีติดตั้ง Apps Script</h3>
+        <h3>📖 วิธีใช้งานเครื่องยิง</h3>
         <ol class="steps">
-          <li>เปิด Google Sheet ใหม่</li>
-          <li>Extensions → Apps Script</li>
-          <li>วางไฟล์ Code.gs</li>
-          <li>Run <b>initSheet()</b></li>
-          <li>Deploy → New deployment → Web app</li>
-          <li>Execute as: Me</li>
-          <li>Who has access: Anyone</li>
-          <li>Copy URL มาใส่หน้า login</li>
+          <li>จับคู่ Bluetooth scanner กับโทรศัพท์</li>
+          <li>ตั้ง scanner เป็น HID / Keyboard mode</li>
+          <li>ตั้ง suffix = Enter</li>
+          <li>เปิดเว็บนี้และ login</li>
+          <li>เลือกโหมด รับเข้า / จ่ายออก</li>
+          <li>ถ้าเป็นโหมดออก ให้กรอกชื่อเซลล์ก่อน</li>
+          <li>จากนั้นยิงได้เลย ไม่ต้องกดปุ่ม</li>
         </ol>
       </div>
 
@@ -265,6 +264,16 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
     </div>
   </div>
 </div>
+
+<input
+  id="hidInput"
+  type="text"
+  autocomplete="off"
+  autocapitalize="off"
+  spellcheck="false"
+  inputmode="none"
+  style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"
+>
 
 <div class="toast" id="toast"></div>
 
@@ -279,10 +288,99 @@ let LAST_SCAN_TEXT = '';
 let LAST_SCAN_TIME = 0;
 const DUP_MS = 8000;
 
+let HID_ENABLED = true;
+let hidBufferTimer = null;
+
 window.onload = () => {
   if (API_URL) document.getElementById('apiUrl').value = API_URL;
   updateModeUI();
+  setupHidScanner();
 };
+
+function getHidInput() {
+  return document.getElementById('hidInput');
+}
+
+function focusHidInput() {
+  if (!HID_ENABLED) return;
+  const el = getHidInput();
+  if (!el) return;
+  try { el.focus(); } catch (e) {}
+}
+
+function clearHidInput() {
+  const el = getHidInput();
+  if (el) el.value = '';
+}
+
+function processScannerText(text) {
+  const code = String(text || '').trim();
+  if (!code) return;
+
+  parseCode(code);
+
+  if (MODE === 'in') {
+    setTimeout(() => {
+      if (LAST) doAct('in');
+    }, 80);
+    return;
+  }
+
+  if (MODE === 'out') {
+    const loc = document.getElementById('locI')?.value.trim();
+    if (loc) {
+      setTimeout(() => {
+        if (LAST) doAct('out');
+      }, 80);
+    }
+  }
+}
+
+function setupHidScanner() {
+  const el = getHidInput();
+  if (!el) return;
+
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = el.value;
+      clearHidInput();
+      processScannerText(code);
+      focusHidInput();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+    }
+  });
+
+  el.addEventListener('input', () => {
+    clearTimeout(hidBufferTimer);
+    hidBufferTimer = setTimeout(() => {
+      const code = el.value;
+      if (code && code.length >= 4) {
+        clearHidInput();
+        processScannerText(code);
+      }
+      focusHidInput();
+    }, 250);
+  });
+
+  document.addEventListener('click', () => {
+    setTimeout(focusHidInput, 50);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      setTimeout(focusHidInput, 150);
+    }
+  });
+
+  window.addEventListener('load', () => {
+    setTimeout(focusHidInput, 300);
+  });
+}
 
 async function doSetup() {
   const url  = document.getElementById('apiUrl').value.trim();
@@ -313,6 +411,8 @@ async function doSetup() {
   document.getElementById('scSetup').classList.remove('on');
   document.getElementById('scApp').classList.add('on');
   document.getElementById('usrBadge').textContent = user;
+  setTimeout(focusHidInput, 300);
+
   toast('✅ เชื่อมต่อ Sheet สำเร็จ', 'ok');
   setPill('ok');
   await loadAll();
@@ -521,8 +621,8 @@ function lookup(d) {
     { lot_pfx:'BY-C2502NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
     { lot_pfx:'BY-C2312PMI', name:'Beyond EaseFit PMI',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit PMI' },
     { lot_pfx:'BY-B2501S',   name:'Beyond SpO2 Kits',           brand:'Hunan Beyond',        type:'accessory', model:'SpO2 Kit' },
-    { lot_pfx:'BY-C2601R20', name:'Beyond R-20i APAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
-    { lot_pfx:'BY-C2601R20I',name:'Beyond R-20i APAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' }
+    { lot_pfx:'BY-C2601R20', name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
+    { lot_pfx:'BY-C2601R20I',name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' }
   ];
 
   for (const p of db) {
@@ -610,7 +710,7 @@ function updateModeUI() {
   document.getElementById('locI').placeholder = isIn ? 'คลังสินค้า / รพ...' : 'เช่น Mint, Ploy, ฝ่ายขายเหนือ';
   document.getElementById('scanHint').innerHTML = isIn
     ? '<span class="dot"></span>โหมดรับเข้า — เล็งกล้องที่ QR / Barcode'
-    : '<span class="dot"></span>โหมดจ่ายออก — สแกนแล้วระบุชื่อเซลล์';
+    : '<span class="dot"></span>โหมดจ่ายออก — ยิงแล้วตัดสต็อกทันทีถ้ามีชื่อเซลล์';
 }
 
 function toggleM() {
@@ -656,8 +756,6 @@ function showResult(d) {
 
   document.getElementById('rbox').classList.add('on');
   document.getElementById('sf').style.display = 'block';
-  document.getElementById('locI').value = '';
-  document.getElementById('noteI').value = '';
   updateModeUI();
 }
 
@@ -666,10 +764,10 @@ function resetScan() {
   document.getElementById('rkv').innerHTML = '';
   document.getElementById('rbox').classList.remove('on');
   document.getElementById('sf').style.display = 'none';
-  document.getElementById('locI').value = '';
   document.getElementById('noteI').value = '';
   stopScannerOnly();
   document.getElementById('reader').innerHTML = '';
+  setTimeout(focusHidInput, 100);
 }
 
 async function doAct(action) {
@@ -717,8 +815,18 @@ async function doAct(action) {
     if (!res.ok) throw new Error(res.error || 'API error');
 
     toast(action === 'in' ? '✅ บันทึกรับเข้าแล้ว' : `🔺 จ่ายออกให้ ${loc} แล้ว`, 'ok');
+
+    if (action === 'out') {
+      // คงชื่อเซลล์ไว้ให้ยิงออกต่อได้
+      document.getElementById('locI').value = loc;
+    }
+
     setPill('ok');
     resetScan();
+    if (action === 'out') {
+      document.getElementById('locI').value = loc;
+      document.getElementById('sf').style.display = 'block';
+    }
     await loadAll();
   } catch(e) {
     setPill('err');
@@ -727,6 +835,7 @@ async function doAct(action) {
     document.getElementById('bIn').disabled = false;
     document.getElementById('bOut').disabled = false;
     IS_PROCESSING = false;
+    setTimeout(focusHidInput, 120);
   }
 }
 
