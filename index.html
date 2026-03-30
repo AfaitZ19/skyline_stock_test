@@ -20,7 +20,7 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
 .sc.on{display:flex}
 
 #scSetup{background:var(--B);align-items:center;justify-content:center;padding:20px}
-.card{background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.card{background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
 .logo-row{display:flex;align-items:center;gap:11px;margin-bottom:20px}
 .logo-sq{width:46px;height:46px;background:var(--B);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .logo-sq svg{width:26px;height:26px;fill:#fff}
@@ -60,16 +60,18 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
 @keyframes p{0%,100%{opacity:1}50%{opacity:.2}}
 #reader{width:100%;border-radius:8px;overflow:hidden;min-height:160px;background:#f0f2f5}
 #reader video{width:100%!important}
-.scan-btn-wrap{display:flex;justify-content:center;margin:8px 0 6px}
+.scan-btn-wrap{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0 6px}
 .scan-btn{background:var(--B);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.mtog{text-align:center;margin-top:7px}
-.mtog button{background:none;border:none;color:var(--B);font-size:11px;cursor:pointer;font-family:inherit;text-decoration:underline}
+.scan-btn.alt{background:#fff;color:var(--B);border:1.5px solid var(--B)}
 
-.mform{background:#f7f8fa;border-radius:8px;padding:11px;margin-top:7px;display:none}
-.mform.on{display:block}
+.mform{background:#f7f8fa;border-radius:8px;padding:11px;margin-top:7px;display:block}
 .mform input{width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:7px;font-size:13px;font-family:inherit;outline:none}
 .mform input:focus{border-color:var(--B)}
 .mform button{width:100%;margin-top:7px;padding:9px;background:var(--B);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600}
+
+.toolrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.toolbtn{padding:9px 10px;border-radius:9px;border:1.5px solid var(--bd);background:#fff;font-size:12px;font-weight:700;color:var(--mu);cursor:pointer}
+.toolbtn.on{border-color:var(--B);background:var(--BL);color:var(--B)}
 
 .rbox{background:var(--BL);border:1.5px solid var(--B);border-radius:var(--ra);padding:13px;margin-bottom:11px;display:none}
 .rbox.on{display:block}
@@ -180,9 +182,19 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
 
       <div class="sbox">
         <div class="shint" id="scanHint"><span class="dot"></span>โหมดรับเข้า — เล็งกล้องที่ QR / Barcode</div>
-        <div class="scan-btn-wrap"><button class="scan-btn" onclick="startScan()">📷 เปิดกล้อง</button></div>
+
+        <div class="toolrow">
+          <button class="toolbtn" id="hidToggleBtn" onclick="toggleHIDMode()">⌨️ โหมดเครื่องยิง: ปิด</button>
+          <button class="toolbtn on" id="manualToggleBtn" onclick="focusManualInput()">✍️ พิมพ์เอง</button>
+        </div>
+
+        <div class="scan-btn-wrap">
+          <button class="scan-btn" onclick="startScan()">📷 เปิดกล้อง</button>
+          <button class="scan-btn alt" onclick="stopScannerOnly()">⛔ หยุดกล้อง</button>
+        </div>
+
         <div id="reader"></div>
-        <div class="mtog"><button onclick="toggleM()">ป้อนรหัสด้วยตนเอง</button></div>
+
         <div class="mform" id="mf">
           <input type="text" id="mc" placeholder="Barcode / SN / LOT">
           <button onclick="procM()">ยืนยัน</button>
@@ -244,15 +256,14 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
       </div>
 
       <div class="scrd">
-        <h3>📖 วิธีใช้งานเครื่องยิง</h3>
+        <h3>📖 วิธีใช้</h3>
         <ol class="steps">
-          <li>จับคู่ Bluetooth scanner กับโทรศัพท์</li>
+          <li>ถ้าจะพิมพ์เองหรือใช้คีย์บอร์ดมือถือ ไม่ต้องเปิดโหมดเครื่องยิง</li>
+          <li>ถ้าจะใช้เครื่องยิง Bluetooth ให้กด “โหมดเครื่องยิง” ก่อน</li>
           <li>ตั้ง scanner เป็น HID / Keyboard mode</li>
           <li>ตั้ง suffix = Enter</li>
-          <li>เปิดเว็บนี้และ login</li>
-          <li>เลือกโหมด รับเข้า / จ่ายออก</li>
-          <li>ถ้าเป็นโหมดออก ให้กรอกชื่อเซลล์ก่อน</li>
-          <li>จากนั้นยิงได้เลย ไม่ต้องกดปุ่ม</li>
+          <li>โหมดรับเข้า = ยิงแล้วเข้าเลย</li>
+          <li>โหมดจ่ายออก = ใส่ชื่อเซลล์ก่อน แล้วค่อยยิง</li>
         </ol>
       </div>
 
@@ -288,7 +299,7 @@ let LAST_SCAN_TEXT = '';
 let LAST_SCAN_TIME = 0;
 const DUP_MS = 8000;
 
-let HID_ENABLED = true;
+let HID_ENABLED = false;
 let hidBufferTimer = null;
 
 window.onload = () => {
@@ -311,6 +322,30 @@ function focusHidInput() {
 function clearHidInput() {
   const el = getHidInput();
   if (el) el.value = '';
+}
+
+function toggleHIDMode() {
+  HID_ENABLED = !HID_ENABLED;
+  const btn = document.getElementById('hidToggleBtn');
+  if (HID_ENABLED) {
+    btn.classList.add('on');
+    btn.textContent = '⌨️ โหมดเครื่องยิง: เปิด';
+    setTimeout(focusHidInput, 50);
+    toast('เปิดโหมดเครื่องยิงแล้ว', 'ok');
+  } else {
+    btn.classList.remove('on');
+    btn.textContent = '⌨️ โหมดเครื่องยิง: ปิด';
+    document.getElementById('mc').focus();
+    toast('ปิดโหมดเครื่องยิงแล้ว', 'ok');
+  }
+}
+
+function focusManualInput() {
+  HID_ENABLED = false;
+  const btn = document.getElementById('hidToggleBtn');
+  btn.classList.remove('on');
+  btn.textContent = '⌨️ โหมดเครื่องยิง: ปิด';
+  document.getElementById('mc').focus();
 }
 
 function processScannerText(text) {
@@ -341,6 +376,8 @@ function setupHidScanner() {
   if (!el) return;
 
   el.addEventListener('keydown', (e) => {
+    if (!HID_ENABLED) return;
+
     if (e.key === 'Enter') {
       e.preventDefault();
       const code = el.value;
@@ -356,6 +393,8 @@ function setupHidScanner() {
   });
 
   el.addEventListener('input', () => {
+    if (!HID_ENABLED) return;
+
     clearTimeout(hidBufferTimer);
     hidBufferTimer = setTimeout(() => {
       const code = el.value;
@@ -368,17 +407,13 @@ function setupHidScanner() {
   });
 
   document.addEventListener('click', () => {
-    setTimeout(focusHidInput, 50);
+    if (HID_ENABLED) setTimeout(focusHidInput, 50);
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
+    if (!document.hidden && HID_ENABLED) {
       setTimeout(focusHidInput, 150);
     }
-  });
-
-  window.addEventListener('load', () => {
-    setTimeout(focusHidInput, 300);
   });
 }
 
@@ -411,11 +446,11 @@ async function doSetup() {
   document.getElementById('scSetup').classList.remove('on');
   document.getElementById('scApp').classList.add('on');
   document.getElementById('usrBadge').textContent = user;
-  setTimeout(focusHidInput, 300);
 
   toast('✅ เชื่อมต่อ Sheet สำเร็จ', 'ok');
   setPill('ok');
   await loadAll();
+  document.getElementById('mc').focus();
 }
 
 function signOut() {
@@ -713,18 +748,11 @@ function updateModeUI() {
     : '<span class="dot"></span>โหมดจ่ายออก — ยิงแล้วตัดสต็อกทันทีถ้ามีชื่อเซลล์';
 }
 
-function toggleM() {
-  const f = document.getElementById('mf');
-  f.classList.toggle('on');
-  if (f.classList.contains('on')) document.getElementById('mc').focus();
-}
-
 function procM() {
   const c = document.getElementById('mc').value.trim();
   if (c) {
     parseCode(c);
     document.getElementById('mc').value = '';
-    document.getElementById('mf').classList.remove('on');
   }
 }
 
@@ -767,7 +795,11 @@ function resetScan() {
   document.getElementById('noteI').value = '';
   stopScannerOnly();
   document.getElementById('reader').innerHTML = '';
-  setTimeout(focusHidInput, 100);
+  if (HID_ENABLED) {
+    setTimeout(focusHidInput, 100);
+  } else {
+    document.getElementById('mc').focus();
+  }
 }
 
 async function doAct(action) {
@@ -816,17 +848,15 @@ async function doAct(action) {
 
     toast(action === 'in' ? '✅ บันทึกรับเข้าแล้ว' : `🔺 จ่ายออกให้ ${loc} แล้ว`, 'ok');
 
-    if (action === 'out') {
-      // คงชื่อเซลล์ไว้ให้ยิงออกต่อได้
-      document.getElementById('locI').value = loc;
-    }
-
+    const keepLoc = loc;
     setPill('ok');
     resetScan();
+
     if (action === 'out') {
-      document.getElementById('locI').value = loc;
+      document.getElementById('locI').value = keepLoc;
       document.getElementById('sf').style.display = 'block';
     }
+
     await loadAll();
   } catch(e) {
     setPill('err');
@@ -835,7 +865,9 @@ async function doAct(action) {
     document.getElementById('bIn').disabled = false;
     document.getElementById('bOut').disabled = false;
     IS_PROCESSING = false;
-    setTimeout(focusHidInput, 120);
+    if (HID_ENABLED) {
+      setTimeout(focusHidInput, 120);
+    }
   }
 }
 
