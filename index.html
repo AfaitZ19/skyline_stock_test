@@ -581,8 +581,17 @@ function parseCode(raw) {
   const gtin = cleaned.match(/^01(\d{14})/);
   if (gtin) d.gtin = gtin[1];
 
-  const mfg = cleaned.match(/(?:^|01\d{14})11(\d{6})/);
-  if (mfg) d.mfgDate = fd(mfg[1]);
+  // 🔥 หา mfg date จากตำแหน่ง GTIN แบบ fix
+  const idx01 = cleaned.indexOf('01');
+  if (idx01 !== -1 && cleaned.length >= idx01 + 18) {
+  const possible = cleaned.substr(idx01 + 16, 8); // 11 + 6 digits
+  if (possible.startsWith('11')) {
+  const rawDate = possible.substr(2, 6);
+  if (/^\d{6}$/.test(rawDate)) {
+  d.mfgDate = fd(rawDate);
+    }
+  }
+}
 
   const sn = cleaned.match(/21([A-Z0-9]+)/);
   if (sn) d.sn = sn[1];
