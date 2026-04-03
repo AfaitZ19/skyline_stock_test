@@ -568,7 +568,7 @@ function parseCode(raw) {
     else if (m[3]) d.sn = m[3];
     else if (m[4]) d.mfgDate = fd(m[4]);
     else if (m[5]) d.expiry = fd(m[5]);
-    if (!cleaned.includes('(')) {
+  }
   const gtin = cleaned.match(/^01(\d{14})/);
   if (gtin) d.gtin = gtin[1];
 
@@ -580,9 +580,7 @@ function parseCode(raw) {
 
   const lot = cleaned.match(/10(.+?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
-}
-  }
-
+  
   if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
     const maybeGtin = cleaned.slice(2, 16);
     if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
