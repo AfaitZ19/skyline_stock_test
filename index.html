@@ -581,7 +581,7 @@ function parseCode(raw) {
   const gtin = cleaned.match(/^01(\d{14})/);
   if (gtin) d.gtin = gtin[1];
 
-  const mfg = cleaned.match(/11(\d{6})/);
+  const mfg = cleaned.match(/(?:^|01\d{14})11(\d{6})/);
   if (mfg) d.mfgDate = fd(mfg[1]);
 
   const sn = cleaned.match(/21([A-Z0-9]+)/);
