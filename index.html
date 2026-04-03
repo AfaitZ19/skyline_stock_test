@@ -545,9 +545,18 @@ function fd(s) {
 function normalizeLot(lot) {
   lot = cleanText(lot);
   if (!lot) return '';
+
   const idxBy = lot.indexOf('BY-');
-  if (idxBy !== -1) return lot.substring(idxBy);
-  return lot.replace(/^\d{10,}/, '');
+  if (idxBy !== -1) {
+    lot = lot.substring(idxBy);
+  } else {
+    lot = lot.replace(/^\d{10,}/, '');
+  }
+
+  // ตัด internal factory code เช่น C.03.05.01.03.000002 ออก
+  lot = lot.replace(/C\.\d+(?:\.\d+)*/g, '');
+
+  return lot.trim();
 }
 
 function parseCode(raw) {
