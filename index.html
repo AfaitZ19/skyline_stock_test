@@ -680,7 +680,7 @@ function lookup(d) {
     { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
     { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
 
-    { sn_pfx:'CADL',         name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
+    { sn_pfx:'CADL',         name:'Beyond R-20i CPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
     { lot_pfx:'BY-C2506NM5', name:'Beyond EaseFit NM5',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5' },
     { lot_pfx:'BY-C2411NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
     { lot_pfx:'BY-C2502NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
@@ -715,7 +715,7 @@ function inferFromLot(lot) {
   else if (lot.includes('NM5A')) { model = 'EaseFit NM5A'; name = 'Beyond EaseFit NM5A'; }
   else if (lot.includes('NM5')) { model = 'EaseFit NM5'; name = 'Beyond EaseFit NM5'; }
   else if (lot.includes('PMI')) { model = 'EaseFit PMI'; name = 'Beyond EaseFit PMI'; }
-  else if (lot.includes('R20')) { type = 'device'; model = 'R-20i'; name = 'Beyond R-20i BPAP'; }
+  else if (lot.includes('R20')) { type = 'device'; model = 'R-20i'; name = 'Beyond R-20i CPAP'; }
   else if (lot.includes('SPO2')) { type = 'accessory'; model = 'SpO2 Kit'; name = 'Beyond SpO2 Kits'; }
 
   if (!name) return null;
