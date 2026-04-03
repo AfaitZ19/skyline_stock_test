@@ -593,15 +593,22 @@ function parseCode(raw) {
   }
 }
 
-  // 🔥 หา SN แบบ fix
+  // 🔥 หา SN: เริ่มหลัง 21 และหยุดที่ 10/11/17 ตัวแรก
   const idx21 = cleaned.indexOf('21');
   if (idx21 !== -1) {
-  let snRaw = cleaned.substring(idx21 + 2);
+  const rest = cleaned.substring(idx21 + 2);
 
-  const stopIdx = snRaw.search(/10|11|17/);
-  if (stopIdx !== -1) {
-    snRaw = snRaw.substring(0, stopIdx);
-  }
+  let stopIdx = rest.length;
+  const i10 = rest.indexOf('10');
+  const i11 = rest.indexOf('11');
+  const i17 = rest.indexOf('17');
+
+  [i10, i11, i17].forEach(i => {
+    if (i !== -1 && i < stopIdx) stopIdx = i;
+  });
+
+  d.sn = rest.substring(0, stopIdx);
+}
 
   d.sn = snRaw;
 }
