@@ -603,7 +603,6 @@ function parseCode(raw) {
     snRaw = snRaw.substring(0, stopIdx);
   }
 
-  d.sn = snRaw;
 }
   const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
@@ -613,14 +612,23 @@ function parseCode(raw) {
     if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
   }
 
-  if (!d.lot) {
-    const idx10 = cleaned.indexOf('10');
-    if (idx10 !== -1) {
-      d.lot = normalizeLot(cleaned.slice(idx10 + 2));
-    }
-  } else {
-    d.lot = normalizeLot(d.lot);
+ function normalizeLot(lot) {
+  lot = cleanText(lot);
+  if (!lot) return '';
+
+  const idxBy = lot.indexOf('BY-');
+  if (idxBy !== -1) {
+    lot = lot.substring(idxBy);
   }
+
+  // 🔥 ตัด AI 91 + ทุกอย่างหลังจากนั้น
+  lot = lot.replace(/91.*$/, '');
+
+  // 🔥 ตัด .03.05... (internal code)
+  lot = lot.replace(/\..*$/, '');
+
+  return lot.trim();
+}
 
   if (!d.sn) {
     const idx21 = cleaned.indexOf('21');
