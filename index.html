@@ -593,10 +593,10 @@ function parseCode(raw) {
   }
 }
 
-  const sn = cleaned.match(/21([A-Z0-9]+)/);
+  const sn = cleaned.match(/21([A-Z0-9]+?)(10|11|17|$)/);
   if (sn) d.sn = sn[1];
 
-  const lot = cleaned.match(/10(.+?)(21|11|17|$)/);
+  const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
   
   if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
