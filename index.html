@@ -593,9 +593,18 @@ function parseCode(raw) {
   }
 }
 
-  const sn = cleaned.match(/21([A-Z0-9]+?)(10|11|17|$)/);
-  if (sn) d.sn = sn[1];
+  // 🔥 หา SN แบบ fix
+  const idx21 = cleaned.indexOf('21');
+  if (idx21 !== -1) {
+  let snRaw = cleaned.substring(idx21 + 2);
 
+  const stopIdx = snRaw.search(/10|11|17/);
+  if (stopIdx !== -1) {
+    snRaw = snRaw.substring(0, stopIdx);
+  }
+
+  d.sn = snRaw;
+}
   const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
   
