@@ -583,7 +583,7 @@ function parseCode(raw) {
 
   // 🔥 หา mfg date จากตำแหน่ง GTIN แบบ fix
   const idx01 = cleaned.indexOf('01');
-  if (idx01 !== -1 && cleaned.length >= idx01 + 18) {
+  if (idx01 !== -1 && cleaned.length >= idx01 + 24) {
   const possible = cleaned.substr(idx01 + 16, 8); // 11 + 6 digits
   if (possible.startsWith('11')) {
   const rawDate = possible.substr(2, 6);
