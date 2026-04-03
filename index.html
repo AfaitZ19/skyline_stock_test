@@ -610,8 +610,6 @@ function parseCode(raw) {
   d.sn = rest.substring(0, stopIdx);
 }
 
-  d.sn = snRaw;
-}
   const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
   
