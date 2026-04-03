@@ -735,6 +735,18 @@ async function doAct(action) {
   const brand = LAST.p?.brand || '';
   const model = LAST.p?.model || '';
 
+  if (action === 'in' && LAST.sn) {
+    const exists = CACHE.device.some(x =>
+      (x['Serial Number (SN)'] || x.sn) === LAST.sn
+    );
+
+    if (exists) {
+      toast('❌ SN นี้มีในระบบแล้ว', 'err');
+      IS_PROCESSING = false;
+      return;
+    }
+  }
+
   if (action === 'out' && !loc) {
     toast('กรุณาระบุว่าเอาไปให้เซลล์คนไหน', 'warn');
     IS_PROCESSING = false;
