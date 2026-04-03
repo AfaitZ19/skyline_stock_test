@@ -724,7 +724,7 @@ async function startScan() {
     await scanner.start(
       { facingMode:'environment' },
       { fps:10, qrbox:{width:260,height:110}, aspectRatio:1.6 },
-      txt => parseCode(txt),
+      txt => processScannerText(txt),
       () => {}
     );
     scanOn = true;
