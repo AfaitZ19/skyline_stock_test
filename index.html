@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Skyline Medical — Stock (Fixed)</title>
+<title>Skyline Medical — Stock</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -15,9 +15,10 @@
   --bd:#e0e0e0;--bg:#f0f2f5;--tx:#1a1a1a;--mu:#6b7280;
   --ra:10px;--sh:0 2px 8px rgba(0,0,0,.08)
 }
-body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
 .sc{display:none;min-height:100vh;flex-direction:column}
 .sc.on{display:flex}
+
 #scSetup{background:var(--B);align-items:center;justify-content:center;padding:20px}
 .card{background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
 .logo-row{display:flex;align-items:center;gap:11px;margin-bottom:20px}
@@ -117,6 +118,7 @@ body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 
 .scrd{background:#fff;border-radius:var(--ra);padding:14px;box-shadow:var(--sh);margin-bottom:10px}
 .scrd h3{font-size:13px;font-weight:700;color:#333;margin-bottom:9px}
+.scrd p{font-size:12px;color:#555;line-height:1.6;margin-bottom:7px}
 .bfull{width:100%;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;margin-bottom:6px}
 .bout2{background:#fff;color:var(--B);border:1.5px solid var(--B)}
 .steps{list-style:none;counter-reset:s}
@@ -135,7 +137,7 @@ body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
   <div class="card">
     <div class="logo-row">
       <div class="logo-sq"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg></div>
-      <div><h1>Skyline Medical</h1><p>ระบบสต็อก — เวอร์ชันแก้ล็อกอินและสแกน</p></div>
+      <div><h1>Skyline Medical</h1><p>ระบบสต็อก — เชื่อมต่อ Google Sheets</p></div>
     </div>
     <div class="err" id="setupErr"></div>
     <label class="lbl">Apps Script Web App URL</label>
@@ -194,7 +196,7 @@ body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
         <div id="reader"></div>
 
         <div class="mform" id="mf">
-          <input type="text" id="mc" placeholder="Barcode / SN / LOT" onkeydown="if(event.key==='Enter'){event.preventDefault();procM();}">
+          <input type="text" id="mc" placeholder="Barcode / SN / LOT">
           <button onclick="procM()">ยืนยัน</button>
         </div>
       </div>
@@ -212,8 +214,8 @@ body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
           <option value="accessory">🔧 อุปกรณ์เสริม</option>
         </select>
 
-        <label class="flbl" id="locLabel">สถานที่ / โรงพยาบาล / เซลล์</label>
-        <input type="text" class="finp" id="locI" placeholder="คลังสินค้า / รพ / ชื่อเซลล์">
+        <label class="flbl" id="locLabel">สถานที่ / โรงพยาบาล</label>
+        <input type="text" class="finp" id="locI" placeholder="คลังสินค้า / รพ...">
 
         <label class="flbl">หมายเหตุ</label>
         <input type="text" class="finp" id="noteI" placeholder="(ถ้ามี)">
@@ -288,22 +290,10 @@ body{font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 
 <script>
 const USERS = { stock:'1234', admin:'admin123' };
-
-let API_URL = localStorage.getItem('skl_api') || '';
-let CUR_USER = localStorage.getItem('skl_user') || '';
-let MODE = 'in';
-let LAST = null;
-let scanner = null;
-let scanOn = false;
-let sflt = 'all';
-
-let CACHE = {
-  device: [],
-  mask: [],
-  accessory: [],
-  history: []
-};
-
+let API_URL  = localStorage.getItem('skl_api') || '';
+let CUR_USER = '';
+let MODE = 'in', LAST = null, scanner = null, scanOn = false, sflt = 'all';
+let CACHE = { device:[], mask:[], accessory:[], history:[] };
 let IS_PROCESSING = false;
 let LAST_SCAN_TEXT = '';
 let LAST_SCAN_TIME = 0;
@@ -314,15 +304,12 @@ let hidBufferTimer = null;
 
 window.onload = () => {
   if (API_URL) document.getElementById('apiUrl').value = API_URL;
-  if (CUR_USER) document.getElementById('setupUser').value = CUR_USER;
   updateModeUI();
   setupHidScanner();
 };
 
-function byId(id){ return document.getElementById(id); }
-
 function getHidInput() {
-  return byId('hidInput');
+  return document.getElementById('hidInput');
 }
 
 function focusHidInput() {
@@ -339,7 +326,7 @@ function clearHidInput() {
 
 function toggleHIDMode() {
   HID_ENABLED = !HID_ENABLED;
-  const btn = byId('hidToggleBtn');
+  const btn = document.getElementById('hidToggleBtn');
   if (HID_ENABLED) {
     btn.classList.add('on');
     btn.textContent = '⌨️ โหมดเครื่องยิง: เปิด';
@@ -348,17 +335,40 @@ function toggleHIDMode() {
   } else {
     btn.classList.remove('on');
     btn.textContent = '⌨️ โหมดเครื่องยิง: ปิด';
-    byId('mc').focus();
+    document.getElementById('mc').focus();
     toast('ปิดโหมดเครื่องยิงแล้ว', 'ok');
   }
 }
 
 function focusManualInput() {
   HID_ENABLED = false;
-  const btn = byId('hidToggleBtn');
+  const btn = document.getElementById('hidToggleBtn');
   btn.classList.remove('on');
   btn.textContent = '⌨️ โหมดเครื่องยิง: ปิด';
-  byId('mc').focus();
+  document.getElementById('mc').focus();
+}
+
+function processScannerText(text) {
+  const code = String(text || '').trim();
+  if (!code) return;
+
+  parseCode(code);
+
+  if (MODE === 'in') {
+    setTimeout(() => {
+      if (LAST) doAct('in');
+    }, 80);
+    return;
+  }
+
+  if (MODE === 'out') {
+    const loc = document.getElementById('locI')?.value.trim();
+    if (loc) {
+      setTimeout(() => {
+        if (LAST) doAct('out');
+      }, 80);
+    }
+  }
 }
 
 function setupHidScanner() {
@@ -408,10 +418,10 @@ function setupHidScanner() {
 }
 
 async function doSetup() {
-  const url  = byId('apiUrl').value.trim();
-  const user = byId('setupUser').value.trim();
-  const pass = byId('setupPass').value;
-  const errEl = byId('setupErr');
+  const url  = document.getElementById('apiUrl').value.trim();
+  const user = document.getElementById('setupUser').value.trim();
+  const pass = document.getElementById('setupPass').value;
+  const errEl = document.getElementById('setupErr');
 
   if (!url) { showSetupErr('กรุณาใส่ Apps Script URL'); return; }
   if (!user) { showSetupErr('กรุณาใส่ชื่อผู้ใช้'); return; }
@@ -422,7 +432,7 @@ async function doSetup() {
 
   try {
     const r = await apiFetch(url + '?action=ping');
-    if (!r || !r.ok) throw new Error((r && r.error) || 'API error');
+    if (!r.ok) throw new Error(r.error || 'API error');
   } catch(e) {
     showSetupErr('เชื่อมต่อ API ไม่ได้: ' + e.message);
     setPill('err');
@@ -432,25 +442,24 @@ async function doSetup() {
   API_URL  = url;
   CUR_USER = user;
   localStorage.setItem('skl_api', url);
-  localStorage.setItem('skl_user', user);
 
-  byId('scSetup').classList.remove('on');
-  byId('scApp').classList.add('on');
-  byId('usrBadge').textContent = user;
+  document.getElementById('scSetup').classList.remove('on');
+  document.getElementById('scApp').classList.add('on');
+  document.getElementById('usrBadge').textContent = user;
 
   toast('✅ เชื่อมต่อ Sheet สำเร็จ', 'ok');
   setPill('ok');
   await loadAll();
-  byId('mc').focus();
+  document.getElementById('mc').focus();
 }
 
 function signOut() {
   CUR_USER = '';
   LAST = null;
   stopScannerOnly();
-  byId('scApp').classList.remove('on');
-  byId('scSetup').classList.add('on');
-  byId('setupPass').value = '';
+  document.getElementById('scApp').classList.remove('on');
+  document.getElementById('scSetup').classList.add('on');
+  document.getElementById('setupPass').value = '';
   resetScan();
 }
 
@@ -460,32 +469,19 @@ function changeApiUrl() {
 }
 
 function showSetupErr(msg) {
-  const errEl = byId('setupErr');
+  const errEl = document.getElementById('setupErr');
   errEl.textContent = msg;
   errEl.style.display = 'block';
 }
 
 async function apiFetch(url) {
-  const tries = [
-    () => fetch(url, { redirect:'follow', mode:'cors', credentials:'omit' }),
-    () => fetch(url, { redirect:'follow', credentials:'omit' })
-  ];
-
-  let lastErr;
-  for (const fn of tries) {
-    try {
-      const r = await fn();
-      const txt = await r.text();
-      try {
-        return JSON.parse(txt);
-      } catch (e) {
-        throw new Error('Response not JSON: ' + txt.slice(0, 120));
-      }
-    } catch (e) {
-      lastErr = e;
-    }
+  try {
+    const r = await fetch(url, { redirect:'follow', mode:'cors' });
+    return r.json();
+  } catch(e) {
+    const r = await fetch(url, { redirect:'follow', credentials:'omit' });
+    return r.json();
   }
-  throw lastErr || new Error('fetch failed');
 }
 
 async function apiPost(body) {
@@ -502,15 +498,14 @@ async function apiPost(body) {
 }
 
 async function loadAll() {
-  if (!API_URL) return;
   setPill('busy');
   try {
     const [stock, hist] = await Promise.all([
       apiFetch(API_URL + '?action=stock'),
-      apiFetch(API_URL + '?action=history&n=200')
+      apiFetch(API_URL + '?action=history&n=200'),
     ]);
 
-    if (!stock || !stock.ok) throw new Error((stock && stock.error) || 'โหลด stock ไม่สำเร็จ');
+    if (!stock.ok) throw new Error(stock.error);
 
     CACHE.device    = stock.device || [];
     CACHE.mask      = stock.mask || [];
@@ -522,11 +517,11 @@ async function loadAll() {
     updateStats();
 
     setPill('ok');
-    byId('connTxt').innerHTML =
+    document.getElementById('connTxt').innerHTML =
       `✅ เชื่อมต่อสำเร็จ<br>เครื่อง ${CACHE.device.length} | หน้ากาก ${sumQty(CACHE.mask, 'Qty')} | เสริม ${sumQty(CACHE.accessory, 'Qty')}<br>อัปเดต: ${new Date().toLocaleTimeString('th-TH')}`;
   } catch(e) {
     setPill('err');
-    byId('connTxt').textContent = '❌ ' + e.message;
+    document.getElementById('connTxt').textContent = '❌ ' + e.message;
     toast('โหลดข้อมูลไม่ได้: ' + e.message, 'err');
   }
 }
@@ -544,66 +539,24 @@ function cleanText(raw) {
 }
 
 function fd(s) {
-  return /^\d{6}$/.test(s) ? ('20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6)) : s;
+  return s.length === 6 ? '20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6) : s;
 }
 
 function normalizeLot(lot) {
-  return cleanText(lot);
-}
+  lot = cleanText(lot);
+  if (!lot) return '';
 
-function parseGs1(cleaned) {
-  const d = { raw: cleaned, sn:'', lot:'', gtin:'', mfgDate:'', expiry:'', ref:'' };
-  if (!cleaned) return d;
-
-  const hasParen = /\(\d{2}\)/.test(cleaned);
-  if (hasParen) {
-    const re = /\(01\)(\d{14})|\(10\)([A-Z0-9.\-\/]+)|\(21\)([A-Z0-9.\-\/]+)|\(11\)(\d{6})|\(17\)(\d{6})/g;
-    let m;
-    while ((m = re.exec(cleaned)) !== null) {
-      if (m[1]) d.gtin = m[1];
-      else if (m[2]) d.lot = normalizeLot(m[2]);
-      else if (m[3]) d.sn = cleanText(m[3]);
-      else if (m[4]) d.mfgDate = fd(m[4]);
-      else if (m[5]) d.expiry = fd(m[5]);
-    }
-    return d;
+  const idxBy = lot.indexOf('BY-');
+  if (idxBy !== -1) {
+    lot = lot.substring(idxBy);
+  } else {
+    lot = lot.replace(/^\d{10,}/, '');
   }
 
-  // raw GS1 fallback: 01 + 14 digits, then parse known AIs in order
-  let i = 0;
-  while (i < cleaned.length) {
-    const ai = cleaned.slice(i, i + 2);
-    if (ai === '01' && /^\d{14}$/.test(cleaned.slice(i + 2, i + 16))) {
-      d.gtin = cleaned.slice(i + 2, i + 16);
-      i += 16;
-      continue;
-    }
-    if (ai === '11' && /^\d{6}$/.test(cleaned.slice(i + 2, i + 8))) {
-      d.mfgDate = fd(cleaned.slice(i + 2, i + 8));
-      i += 8;
-      continue;
-    }
-    if (ai === '17' && /^\d{6}$/.test(cleaned.slice(i + 2, i + 8))) {
-      d.expiry = fd(cleaned.slice(i + 2, i + 8));
-      i += 8;
-      continue;
-    }
-    if (ai === '10' || ai === '21') {
-      const next = cleaned.slice(i + 2);
-      let stopIdx = next.length;
-      ['01','11','17','10','21'].forEach(tag => {
-        const idx = next.indexOf(tag);
-        if (idx > 0 && idx < stopIdx) stopIdx = idx;
-      });
-      const value = next.slice(0, stopIdx);
-      if (ai === '10' && !d.lot) d.lot = normalizeLot(value);
-      if (ai === '21' && !d.sn) d.sn = cleanText(value);
-      i += 2 + value.length;
-      continue;
-    }
-    i += 1;
-  }
-  return d;
+  // ตัด internal factory code เช่น C.03.05.01.03.000002 ออก
+  lot = lot.replace(/C\.\d+(?:\.\d+)*/g, '');
+
+  return lot.trim();
 }
 
 function parseCode(raw) {
@@ -612,125 +565,273 @@ function parseCode(raw) {
 
   const now = Date.now();
   if (IS_PROCESSING) return;
-  if (cleaned === LAST_SCAN_TEXT && (now - LAST_SCAN_TIME) < DUP_MS) {
-    toast('สแกนซ้ำเร็วเกินไป', 'warn');
-    return;
+  if (cleaned === LAST_SCAN_TEXT && (now - LAST_SCAN_TIME) < DUP_MS) return;
+
+  const d = { raw: cleaned, sn:'', lot:'', gtin:'', mfgDate:'', expiry:'', ref:'' };
+
+  const re = /\(01\)(\d{14})|\(10\)([A-Z0-9\-]+)|\(21\)([A-Z0-9\-]+)|\(11\)(\d{6})|\(17\)(\d{6})/g;
+  let m;
+  while ((m = re.exec(cleaned)) !== null) {
+    if (m[1]) d.gtin = m[1];
+    else if (m[2]) d.lot = m[2];
+    else if (m[3]) d.sn = m[3];
+    else if (m[4]) d.mfgDate = fd(m[4]);
+    else if (m[5]) d.expiry = fd(m[5]);
+  }
+  const gtin = cleaned.match(/^01(\d{14})/);
+  if (gtin) d.gtin = gtin[1];
+
+  // 🔥 หา mfg date จากตำแหน่ง GTIN แบบ fix
+  const idx01 = cleaned.indexOf('01');
+  if (idx01 !== -1 && cleaned.length >= idx01 + 24) {
+  const possible = cleaned.substr(idx01 + 16, 8); // 11 + 6 digits
+  if (possible.startsWith('11')) {
+  const rawDate = possible.substr(2, 6);
+  if (/^\d{6}$/.test(rawDate)) {
+  d.mfgDate = fd(rawDate);
+    }
+  }
+}
+
+  // 🔥 หา SN แบบ fix
+  const idx21 = cleaned.indexOf('21');
+  if (idx21 !== -1) {
+  let snRaw = cleaned.substring(idx21 + 2);
+
+  const stopIdx = snRaw.search(/10|11|17/);
+  if (stopIdx !== -1) {
+    snRaw = snRaw.substring(0, stopIdx);
   }
 
-  let d = parseGs1(cleaned);
-
-  if (!d.gtin && /^\d{14}$/.test(cleaned)) {
-    d.gtin = cleaned;
+  d.sn = snRaw;
+}
+  const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
+  if (lot) d.lot = normalizeLot(lot[1]);
+  
+  if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
+    const maybeGtin = cleaned.slice(2, 16);
+    if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
   }
 
-  if (!d.sn && !d.lot && !d.gtin) {
-    d.sn = cleaned;
+  if (!d.lot) {
+    const idx10 = cleaned.indexOf('10');
+    if (idx10 !== -1) {
+      d.lot = normalizeLot(cleaned.slice(idx10 + 2));
+    }
+  } else {
+    d.lot = normalizeLot(d.lot);
   }
 
-  d.ref = d.sn || d.lot || d.gtin || cleaned;
-  d.p = inferProduct(d);
+  if (!d.sn) {
+    const idx21 = cleaned.indexOf('21');
+    const idx10 = cleaned.indexOf('10');
+    if (idx21 !== -1 && idx10 !== -1 && idx21 < idx10) {
+      d.sn = cleaned.slice(idx21 + 2, idx10);
+    } else if (idx21 !== -1) {
+      d.sn = cleaned.slice(idx21 + 2);
+    }
+  }
+
+  if (!d.sn && /^\d{16,20}$/.test(cleaned)) d.sn = cleaned;
+  if (!d.sn && !d.lot && cleaned.length > 4 && !cleaned.startsWith('(')) d.sn = cleaned;
+
+  d.p = lookup(d);
 
   LAST = d;
   LAST_SCAN_TEXT = cleaned;
   LAST_SCAN_TIME = now;
 
-  renderResultBox(d);
-  byId('sf').style.display = 'block';
+  stopScannerOnly();
+  showResult(d);
+  toast('สแกนสำเร็จ', 'ok');
+}
+
+function lookup(d) {
+  const gtinRaw = cleanText(d.gtin).replace(/^0+/, '');
+  const lot = normalizeLot(d.lot);
+  const sn = cleanText(d.sn);
+
+  const db = [
+    { gtin:'4719893347081', name:'APEX iX Auto + Humidifier',  brand:'APEX Medical',        type:'device',    model:'iX Auto + Humidifier' },
+    { gtin:'4713025000400', name:'APEX iX Auto',               brand:'APEX Medical',        type:'device',    model:'iX Auto' },
+    { gtin:'4713025000226', name:'APEX iX Auto Humidifier',    brand:'APEX Medical',        type:'device',    model:'iX Auto Humidifier' },
+    { gtin:'4713025000073', name:'APEX XT Auto',               brand:'APEX Medical',        type:'device',    model:'XT Auto' },
+
+    { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask',      brand:'Wellell',             type:'mask',      model:'WiZARD 510' },
+    { gtin:'606959006829',  name:'Philips Wisp Mask Fabric',   brand:'Philips Respironics', type:'mask',      model:'Wisp' },
+
+    { gtin:'6958949938318', name:'Beyond EaseFit NM5',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5',  size:'M', ref:'78066' },
+    { gtin:'695894993856',  name:'Beyond EaseFit NM6A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { gtin:'695894993849',  name:'Beyond EaseFit NM6',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM6',  size:'L', ref:'78084' },
+    { gtin:'695894993837',  name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { gtin:'6958949937694', name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+    { gtin:'6958949937687', name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { gtin:'6958949932057', name:'Breathing Tube HP1',         brand:'Hunan Beyond',        type:'accessory', model:'HP1', ref:'74001EU' },
+
+    { sn_exact:'26B17',  name:'APEX Unknown Device 26B17',  brand:'APEX Medical', type:'device', model:'Unknown' },
+    { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
+    { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
+
+    { sn_pfx:'CADL',         name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
+    { lot_pfx:'BY-C2506NM5', name:'Beyond EaseFit NM5',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5' },
+    { lot_pfx:'BY-C2411NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { lot_pfx:'BY-C2502NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+    { lot_pfx:'BY-C2312PMI', name:'Beyond EaseFit PMI',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit PMI' },
+    { lot_pfx:'BY-B2501S',   name:'Beyond SpO2 Kits',           brand:'Hunan Beyond',        type:'accessory', model:'SpO2 Kit' },
+    { lot_pfx:'BY-C2601R20', name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
+    { lot_pfx:'BY-C2601R20I',name:'Beyond R-20i BPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' }
+  ];
+
+  for (const p of db) {
+    if (p.gtin && gtinRaw === p.gtin) return p;
+    if (p.sn_exact && sn === p.sn_exact) return p;
+    if (p.sn_pfx && sn.startsWith(p.sn_pfx)) return p;
+    if (p.lot_pfx && lot.startsWith(p.lot_pfx)) return p;
+  }
+
+  return inferFromLot(lot);
+}
+
+function inferFromLot(lot) {
+  if (!lot) return null;
+
+  let model = '';
+  let type = 'mask';
+  let size = '';
+  let ref = '';
+  let name = '';
+  let brand = 'Hunan Beyond';
+
+  if (lot.includes('NM6A')) { model = 'EaseFit NM6A'; name = 'Beyond EaseFit NM6A'; }
+  else if (lot.includes('NM6')) { model = 'EaseFit NM6'; name = 'Beyond EaseFit NM6'; }
+  else if (lot.includes('NM5A')) { model = 'EaseFit NM5A'; name = 'Beyond EaseFit NM5A'; }
+  else if (lot.includes('NM5')) { model = 'EaseFit NM5'; name = 'Beyond EaseFit NM5'; }
+  else if (lot.includes('PMI')) { model = 'EaseFit PMI'; name = 'Beyond EaseFit PMI'; }
+  else if (lot.includes('R20')) { type = 'device'; model = 'R-20i'; name = 'Beyond R-20i BPAP'; }
+  else if (lot.includes('SPO2')) { type = 'accessory'; model = 'SpO2 Kit'; name = 'Beyond SpO2 Kits'; }
+
+  if (!name) return null;
+
+  if (lot.includes('NM5AL') || lot.includes('NM6L') || lot.endsWith('L')) size = 'L';
+  if (lot.includes('NM5AM') || lot.includes('NM6AM') || lot.endsWith('M')) size = 'M';
+  if (lot.includes('NM5AS') || lot.includes('NM6AS') || lot.endsWith('S')) size = 'S';
+
+  if (model === 'EaseFit NM5A' && size === 'L') ref = '78072';
+  if (model === 'EaseFit NM5A' && size === 'M') ref = 'PT78044';
+  if (model === 'EaseFit NM6A' && size === 'M') ref = '78091';
+  if (model === 'EaseFit NM6' && size === 'L') ref = '78084';
+  if (model === 'EaseFit NM5' && size === 'M') ref = '78066';
+
+  return { name, brand, type, model, size, ref };
+}
+
+async function startScan() {
+  if (scanOn || IS_PROCESSING) return;
+  scanner = new Html5Qrcode('reader');
+
+  try {
+    await scanner.start(
+      { facingMode:'environment' },
+      { fps:10, qrbox:{width:260,height:110}, aspectRatio:1.6 },
+      txt => processScannerText(txt),
+      () => {}
+    );
+    scanOn = true;
+  } catch(e) {
+    document.getElementById('reader').innerHTML =
+      '<p style="text-align:center;padding:18px;color:#aaa;font-size:12px">ไม่สามารถเข้าถึงกล้อง<br>ป้อนรหัสด้วยตนเองแทน</p>';
+  }
+}
+
+function stopScannerOnly() {
+  if (scanner) {
+    try { scanner.stop(); } catch(e) {}
+    try { scanner.clear(); } catch(e) {}
+  }
+  scanner = null;
+  scanOn = false;
+}
+
+function setMode(m) {
+  MODE = m;
   updateModeUI();
-
-  if (!HID_ENABLED) {
-    setTimeout(() => byId('mc').focus(), 100);
-  }
 }
 
-function inferProduct(d) {
-  const raw = `${d.raw} ${d.sn} ${d.lot} ${d.gtin}`;
-  const upper = raw.toUpperCase();
-
-  if (/MASK|NASAL|PILLOW|FULLFACE|FFM|N20|P10|WIZARD/.test(upper)) {
-    return { name:'หน้ากาก', brand:'', model:'', size:'', ref:d.ref };
-  }
-  if (/TUBE|FILTER|HUMID|WATER|CHAMBER|HOSE/.test(upper)) {
-    return { name:'อุปกรณ์เสริม', brand:'', model:'', size:'', ref:d.ref };
-  }
-  return { name:'เครื่อง', brand:'', model:'', size:'', ref:d.ref };
-}
-
-function renderResultBox(d) {
-  const kv = byId('rkv');
-  kv.innerHTML = `
-    <dt>Raw</dt><dd>${escapeHtml(d.raw || '-')}</dd>
-    <dt>GTIN</dt><dd>${escapeHtml(d.gtin || '-')}</dd>
-    <dt>SN</dt><dd>${escapeHtml(d.sn || '-')}</dd>
-    <dt>LOT</dt><dd>${escapeHtml(d.lot || '-')}</dd>
-    <dt>MFG</dt><dd>${escapeHtml(d.mfgDate || '-')}</dd>
-    <dt>EXP</dt><dd>${escapeHtml(d.expiry || '-')}</dd>
-    <dt>Ref</dt><dd>${escapeHtml(d.ref || '-')}</dd>
-  `;
-  byId('rbox').classList.add('on');
-
-  if (!byId('noteI').value && d.raw) {
-    byId('noteI').value = '';
-  }
-
-  if (d.p?.name === 'หน้ากาก') byId('iType').value = 'mask';
-  else if (d.p?.name === 'อุปกรณ์เสริม') byId('iType').value = 'accessory';
-  else byId('iType').value = 'device';
+function updateModeUI() {
+  const isIn = MODE === 'in';
+  document.getElementById('mIn').classList.toggle('on', isIn);
+  document.getElementById('mOut').classList.toggle('on', !isIn);
+  document.getElementById('bIn').style.display  = isIn ? 'block' : 'none';
+  document.getElementById('bOut').style.display = isIn ? 'none' : 'block';
+  document.getElementById('locLabel').textContent = isIn ? 'สถานที่ / โรงพยาบาล' : 'จ่ายให้เซลล์คนไหน';
+  document.getElementById('locI').placeholder = isIn ? 'คลังสินค้า / รพ...' : 'เช่น Mint, Ploy, ฝ่ายขายเหนือ';
+  document.getElementById('scanHint').innerHTML = isIn
+    ? '<span class="dot"></span>โหมดรับเข้า — เล็งกล้องที่ QR / Barcode'
+    : '<span class="dot"></span>โหมดจ่ายออก — ยิงแล้วตัดสต็อกทันทีถ้ามีชื่อเซลล์';
 }
 
 function procM() {
-  const code = byId('mc').value.trim();
-  if (!code) {
-    toast('กรุณากรอก Barcode / SN / LOT', 'warn');
-    return;
-  }
-  parseCode(code);
-  byId('mc').value = '';
-
-  if (MODE === 'in' && LAST) {
-    setTimeout(() => doAct('in'), 80);
+  const c = document.getElementById('mc').value.trim();
+  if (c) {
+    parseCode(c);
+    document.getElementById('mc').value = '';
   }
 }
 
-function processScannerText(text) {
-  const code = String(text || '').trim();
-  if (!code) return;
+function showResult(d) {
+  const rows = [];
 
-  byId('mc').value = '';
-  parseCode(code);
-
-  if (MODE === 'in') {
-    setTimeout(() => {
-      if (LAST) doAct('in');
-    }, 80);
-    return;
+  if (d.p) {
+    rows.push(['สินค้า', d.p.name]);
+    rows.push(['แบรนด์', d.p.brand]);
+    rows.push(['ประเภท', d.p.type]);
+    rows.push(['รุ่น', d.p.model || '-']);
+    if (d.p.size) rows.push(['Size', d.p.size]);
+    if (d.p.ref) rows.push(['REF', d.p.ref]);
   }
 
-  if (MODE === 'out') {
-    const loc = byId('locI').value.trim();
-    if (loc) {
-      setTimeout(() => {
-        if (LAST) doAct('out');
-      }, 80);
-    } else {
-      toast('ใส่ชื่อเซลล์หรือสถานที่ก่อนจ่ายออก', 'warn');
-    }
+  if (d.sn) rows.push(['SN', d.sn]);
+  if (d.lot) rows.push(['LOT', d.lot]);
+  if (d.gtin) rows.push(['GTIN', d.gtin]);
+  if (d.mfgDate) rows.push(['วันผลิต', d.mfgDate]);
+  if (d.expiry) rows.push(['หมดอายุ', d.expiry]);
+
+  if (!rows.length) rows.push(['รหัส', d.raw]);
+
+  document.getElementById('rkv').innerHTML = rows.map(([k,v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join('');
+
+  if (d.p && d.p.type) {
+    document.getElementById('iType').value = d.p.type;
+  }
+
+  document.getElementById('rbox').classList.add('on');
+  document.getElementById('sf').style.display = 'block';
+  updateModeUI();
+}
+
+function resetScan() {
+  LAST = null;
+  document.getElementById('rkv').innerHTML = '';
+  document.getElementById('rbox').classList.remove('on');
+  document.getElementById('sf').style.display = 'none';
+  document.getElementById('noteI').value = '';
+  stopScannerOnly();
+  document.getElementById('reader').innerHTML = '';
+  if (HID_ENABLED) {
+    setTimeout(focusHidInput, 100);
+  } else {
+    document.getElementById('mc').focus();
   }
 }
 
 async function doAct(action) {
   if (!LAST) return;
   if (IS_PROCESSING) return;
-  if (!API_URL) {
-    toast('ยังไม่ได้เชื่อม API', 'err');
-    return;
-  }
-
   IS_PROCESSING = true;
 
-  const type = byId('iType').value;
-  const loc  = byId('locI').value.trim();
-  const note = byId('noteI').value.trim();
+  const type = document.getElementById('iType').value;
+  const loc  = document.getElementById('locI').value.trim();
+  const note = document.getElementById('noteI').value.trim();
   const name = LAST.p?.name || LAST.sn || LAST.raw;
   const brand = LAST.p?.brand || '';
   const model = LAST.p?.model || '';
@@ -741,8 +842,8 @@ async function doAct(action) {
     return;
   }
 
-  byId('bIn').disabled = true;
-  byId('bOut').disabled = true;
+  document.getElementById('bIn').disabled = true;
+  document.getElementById('bOut').disabled = true;
   setPill('busy');
 
   try {
@@ -754,11 +855,11 @@ async function doAct(action) {
       model,
       size: LAST.p?.size || '',
       ref: LAST.p?.ref || '',
-      sn: LAST.sn || '',
-      lot: LAST.lot || '',
-      gtin: LAST.gtin || '',
-      mfgDate: LAST.mfgDate || '',
-      expiry: LAST.expiry || '',
+      sn: LAST.sn,
+      lot: LAST.lot,
+      gtin: LAST.gtin,
+      mfgDate: LAST.mfgDate,
+      expiry: LAST.expiry,
       location: loc,
       note,
       user: CUR_USER
@@ -774,8 +875,8 @@ async function doAct(action) {
     resetScan();
 
     if (action === 'out') {
-      byId('locI').value = keepLoc;
-      byId('sf').style.display = 'block';
+      document.getElementById('locI').value = keepLoc;
+      document.getElementById('sf').style.display = 'block';
     }
 
     await loadAll();
@@ -783,10 +884,12 @@ async function doAct(action) {
     setPill('err');
     toast('❌ ' + e.message, 'err');
   } finally {
-    byId('bIn').disabled = false;
-    byId('bOut').disabled = false;
+    document.getElementById('bIn').disabled = false;
+    document.getElementById('bOut').disabled = false;
     IS_PROCESSING = false;
-    if (HID_ENABLED) setTimeout(focusHidInput, 120);
+    if (HID_ENABLED) {
+      setTimeout(focusHidInput, 120);
+    }
   }
 }
 
@@ -796,63 +899,34 @@ function quickOut(item) {
 
   const payload = {
     action: 'out',
-    type: item._type || 'device',
-    name: item['Product Name'] || item.name || '',
-    brand: item['Brand'] || item.brand || '',
-    model: item['Model'] || item.model || '',
-    sn: item['Serial Number (SN)'] || item.sn || '',
-    lot: item['LOT Number'] || item.lot || '',
-    gtin: item['GTIN / Barcode'] || item.gtin || '',
-    mfgDate: item['MFG Date'] || item.mfgDate || '',
-    expiry: item['Expiry Date'] || item.expiry || '',
+    type: item._type,
+    name: item['Product Name'] || '',
+    brand: item['Brand'] || '',
+    model: item['Model'] || '',
+    sn: item['Serial Number (SN)'] || '',
+    lot: item['LOT Number'] || '',
+    gtin: item['GTIN / Barcode'] || '',
     location: who,
     note: 'quick out from stock card',
     user: CUR_USER
   };
 
   setPill('busy');
-  apiPost(payload).then(async res => {
+  apiPost(payload).then(res => {
     if (!res.ok) throw new Error(res.error || 'API error');
-    toast(`🔺 จ่ายออกให้ ${who} แล้ว`, 'ok');
+    toast('🔺 จ่ายออกให้ ' + who + ' แล้ว', 'ok');
     setPill('ok');
-    await loadAll();
+    return loadAll();
   }).catch(e => {
     setPill('err');
     toast('❌ ' + e.message, 'err');
   });
 }
 
-function resetScan() {
-  LAST = null;
-  byId('rkv').innerHTML = '';
-  byId('rbox').classList.remove('on');
-  byId('sf').style.display = 'none';
-  byId('mc').value = '';
-  byId('noteI').value = '';
-  updateModeUI();
-}
-
-function setMode(mode) {
-  MODE = mode;
-  updateModeUI();
-}
-
-function updateModeUI() {
-  byId('mIn').classList.toggle('on', MODE === 'in');
-  byId('mOut').classList.toggle('on', MODE === 'out');
-  byId('scanHint').innerHTML = MODE === 'in'
-    ? '<span class="dot"></span>โหมดรับเข้า — เล็งกล้องที่ QR / Barcode'
-    : '<span class="dot"></span>โหมดจ่ายออก — ใส่ชื่อเซลล์ก่อน แล้วค่อยยิง';
-  byId('bIn').style.display = MODE === 'in' ? 'block' : 'none';
-  byId('bOut').style.display = MODE === 'out' ? 'block' : 'none';
-  byId('locLabel').textContent = MODE === 'out' ? 'เซลล์ / ปลายทาง' : 'สถานที่ / โรงพยาบาล';
-}
-
-function goTab(tab) {
-  ['scan','stock','hist','cfg'].forEach(k => {
-    byId('v-' + k).style.display = (k === tab) ? 'block' : 'none';
-    byId('t-' + k).classList.toggle('on', k === tab);
-  });
+function updateStats() {
+  document.getElementById('sDv').textContent = CACHE.device.length || 0;
+  document.getElementById('sMk').textContent = sumQty(CACHE.mask, 'Qty') || 0;
+  document.getElementById('sAc').textContent = sumQty(CACHE.accessory, 'Qty') || 0;
 }
 
 function flt(type, el) {
@@ -863,140 +937,97 @@ function flt(type, el) {
 }
 
 function renderStock() {
-  const list = byId('stList');
-  const all = [
+  const list = document.getElementById('stList');
+  const items = [
     ...CACHE.device.map(x => ({...x, _type:'device'})),
     ...CACHE.mask.map(x => ({...x, _type:'mask'})),
     ...CACHE.accessory.map(x => ({...x, _type:'accessory'}))
-  ];
+  ].filter(x => sflt === 'all' ? true : x._type === sflt);
 
-  const filtered = sflt === 'all' ? all : all.filter(x => x._type === sflt);
-
-  if (!filtered.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-ic">📭</div>ยังไม่มีข้อมูลสต็อก</div>`;
+  if (!items.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-ic">📦</div><div>ยังไม่มีข้อมูล</div></div>`;
     return;
   }
 
-  list.innerHTML = filtered.map(item => {
-    const type = item._type;
-    const cls = type === 'device' ? 'device' : type === 'mask' ? 'mask' : 'accessory';
-    const badgeCls = type === 'device' ? 'bd2' : type === 'mask' ? 'bm' : 'ba';
-    const name = item['Product Name'] || item.name || item['Name'] || '-';
-    const qty = item['Qty'] || item.qty || (type === 'device' ? 1 : 0);
-    const brand = item['Brand'] || item.brand || '-';
-    const model = item['Model'] || item.model || '-';
-    const sn = item['Serial Number (SN)'] || item.sn || '-';
-    const lot = item['LOT Number'] || item.lot || '-';
-    const gtin = item['GTIN / Barcode'] || item.gtin || '-';
-    const ref = item['Ref'] || item.ref || '-';
-    const loc = item['Location'] || item.location || '-';
+  list.innerHTML = items.map((it, idx) => {
+    const badgeCls = it._type === 'device' ? 'bd2' : it._type === 'mask' ? 'bm' : 'ba';
+    const lot = it['LOT Number'] || '-';
+    const gtin = it['GTIN / Barcode'] || '-';
+    const sn = it['Serial Number (SN)'] || '-';
+    const qty = it['Qty'] || 1;
+    const loc = it['Location'] || it['Location / Hospital'] || '-';
+
     return `
-      <div class="ic ${cls}">
+      <div class="ic ${it._type}">
         <div class="ic-top">
-          <div class="ic-nm">${escapeHtml(name)}</div>
-          <div class="bg ${badgeCls}">${type === 'device' ? 'เครื่อง' : type === 'mask' ? 'หน้ากาก' : 'เสริม'}</div>
+          <div class="ic-nm">${escapeHtml(it['Product Name'] || '-')}</div>
+          <div class="bg ${badgeCls}">${escapeHtml(it._type)}</div>
         </div>
         <dl class="ic-kv">
-          <dt>Brand</dt><dd>${escapeHtml(brand)}</dd>
-          <dt>Model</dt><dd>${escapeHtml(model)}</dd>
-          <dt>Qty</dt><dd>${escapeHtml(String(qty))}</dd>
+          <dt>Brand</dt><dd>${escapeHtml(it['Brand'] || '-')}</dd>
+          <dt>Model</dt><dd>${escapeHtml(it['Model'] || '-')}</dd>
           <dt>SN</dt><dd>${escapeHtml(sn)}</dd>
           <dt>LOT</dt><dd>${escapeHtml(lot)}</dd>
           <dt>GTIN</dt><dd>${escapeHtml(gtin)}</dd>
-          <dt>Ref</dt><dd>${escapeHtml(ref)}</dd>
+          <dt>Qty</dt><dd>${escapeHtml(qty)}</dd>
           <dt>Location</dt><dd>${escapeHtml(loc)}</dd>
         </dl>
         <div class="ic-ft">
-          <div class="ic-meta">อัปเดตจาก Google Sheet</div>
-          <button class="btn-co" onclick='quickOut(${JSON.stringify(item).replace(/</g, "\\u003c")})'>จ่ายออก</button>
+          <div class="ic-meta">#${idx + 1}</div>
+          <button class="btn-co" data-idx="${idx}">🔺 จ่ายออก</button>
         </div>
       </div>
     `;
   }).join('');
+
+  const buttons = list.querySelectorAll('.btn-co');
+  buttons.forEach((btn, i) => {
+    btn.onclick = function() { quickOut(items[i]); };
+  });
 }
 
 function renderHist() {
-  const list = byId('hiList');
+  const list = document.getElementById('hiList');
   const items = CACHE.history || [];
 
   if (!items.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-ic">🗂️</div>ยังไม่มีประวัติ</div>`;
+    list.innerHTML = `<div class="empty"><div class="empty-ic">📋</div><div>ยังไม่มีประวัติ</div></div>`;
     return;
   }
 
-  list.innerHTML = items.map(x => {
-    const action = (x.action || x.Action || '').toLowerCase();
-    const isIn = action === 'in' || action === 'รับเข้า';
+  list.innerHTML = items.map(it => {
+    const action = String(it['Action'] || '');
+    const isIn = action === 'Stock In';
     const icon = isIn ? '⬇️' : '⬆️';
-    const cls = isIn ? 'in' : 'out';
-    const name = x.name || x['Product Name'] || '-';
-    const meta = [
-      x.sn || x['Serial Number (SN)'] || '',
-      x.lot || x['LOT Number'] || '',
-      x.location || x.Location || ''
-    ].filter(Boolean).join(' • ');
-    const ts = x.timestamp || x.Timestamp || x.date || x.Date || '';
+    const hdCls = isIn ? 'in' : 'out';
     return `
       <div class="hi">
-        <div class="hd ${cls}">${icon}</div>
-        <div style="flex:1">
-          <div class="hn">${escapeHtml(name)}</div>
-          <div class="hm">${escapeHtml(meta || '-')}</div>
+        <div class="hd ${hdCls}">${icon}</div>
+        <div>
+          <div class="hn">${escapeHtml(it['Product Name'] || '-')}</div>
+          <div class="hm">${escapeHtml(it['Action'] || '-')} • ${escapeHtml(it['Location / Recipient'] || '-')} • ${escapeHtml(it['Recorded By'] || '-')}</div>
         </div>
-        <div class="ht">${escapeHtml(ts || '-')}</div>
+        <div class="ht">${escapeHtml(it['Date'] || '-')}<br>${escapeHtml(it['Time'] || '-')}</div>
       </div>
     `;
   }).join('');
 }
 
-function updateStats() {
-  byId('sDv').textContent = String(CACHE.device.length || 0);
-  byId('sMk').textContent = String(sumQty(CACHE.mask, 'Qty'));
-  byId('sAc').textContent = String(sumQty(CACHE.accessory, 'Qty'));
-}
-
-async function startScan() {
-  if (scanOn) return;
-  const el = byId('reader');
-
-  try {
-    if (!scanner) scanner = new Html5Qrcode('reader');
-    await scanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 240, height: 240 } },
-      (decodedText) => processScannerText(decodedText),
-      () => {}
-    );
-    scanOn = true;
-    toast('เปิดกล้องแล้ว', 'ok');
-  } catch (e) {
-    console.error(e);
-    toast('เปิดกล้องไม่ได้: ' + e.message, 'err');
-    el.innerHTML = '';
-  }
-}
-
-async function stopScannerOnly() {
-  if (!scanner || !scanOn) return;
-  try {
-    await scanner.stop();
-    await scanner.clear();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    scanOn = false;
-    byId('reader').innerHTML = '';
-  }
+function goTab(tab) {
+  ['scan','stock','hist','cfg'].forEach(k => {
+    document.getElementById('t-' + k).classList.toggle('on', k === tab);
+    document.getElementById('v-' + k).style.display = (k === tab ? 'block' : 'none');
+  });
 }
 
 function setPill(mode) {
-  const el = byId('pill');
-  el.className = 'pill ' + (mode || '');
-  el.textContent = mode === 'ok' ? '● Working' : mode === 'busy' ? '● Syncing' : mode === 'err' ? '● Error' : '● Sheet';
+  const el = document.getElementById('pill');
+  el.className = 'pill ' + mode;
+  el.textContent = mode === 'ok' ? '● Connected' : mode === 'busy' ? '● Working' : mode === 'err' ? '● Error' : '● Sheet';
 }
 
 function toast(msg, type='ok') {
-  const el = byId('toast');
+  const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast on ' + type;
   clearTimeout(window.__toastTimer);
