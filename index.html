@@ -604,7 +604,10 @@ function parseCode(raw) {
   }
 
 }
-  const lot = cleaned.match(/10([A-Z0-9.\-]+?)(21|11|17|$)/);
+  const gtinEnd = cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
+  const afterGtin = cleaned.slice(gtinEnd);
+  const lot = afterGtin.match(/10(BY-[A-Z0-9\-]+)/)
+         || afterGtin.match(/10([A-Z0-9\-]{4,}?)(21|11|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
   
   if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
