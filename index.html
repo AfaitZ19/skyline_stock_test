@@ -542,15 +542,91 @@ function fd(s) {
   return s.length === 6 ? '20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6) : s;
 }
 
+// ============================================================
+// GS1 PARSER — รองรับทั้ง (01)... และ plain 01...
+// ============================================================
 function normalizeLot(lot) {
-  lot = cleanText(lot);
+  lot = String(lot || '').replace(/[^\x20-\x7E]/g, '').trim().toUpperCase();
   if (!lot) return '';
   const idxBy = lot.indexOf('BY-');
-  if (idxBy !== -1) {
-    lot = lot.substring(idxBy);
+  if (idxBy !== -1) return lot.substring(idxBy);
+  // ตัด leading digits (GS1 junk) แต่ไม่ตัด trailing digits (เช่น HP1070)
+  lot = lot.replace(/^\d{10,}/, '');
+  return lot.trim();
+}
+
+function parseGS1(raw) {
+  const d = { sn:'', lot:'', gtin:'', mfgDate:'', expiry:'', ref:'' };
+
+  // รองรับ 2 format: มีวงเล็บ (01)... และไม่มี 01...
+  const hasParen = raw.includes('(');
+
+  if (hasParen) {
+    // Format: (01)06958949927319(11)260115(21)CADL3C00437(10)BY-C2601R20i069
+    const re = /\((\d{2,3})\)([^(]*)/g;
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      const ai = m[1], val = m[2].trim();
+      if (ai === '01') d.gtin = val.replace(/\s/g,'').slice(0,14);
+      else if (ai === '10') d.lot = val;
+      else if (ai === '21') d.sn = val;
+      else if (ai === '11') d.mfgDate = fmtDate(val.replace(/\s/g,'').slice(0,6));
+      else if (ai === '17') d.expiry = fmtDate(val.replace(/\s/g,'').slice(0,6));
+    }
+    return d;
   }
-  lot = lot.replace(/C\.\d+(?:\.\d+)+/g, '').trim();
-  return lot;
+
+  // Format: plain GS1 ไม่มีวงเล็บ
+  // AI ที่รู้จัก + ความยาว fixed: 01(14), 11(6), 17(6)
+  // AI variable length: 10, 21 (ต้องหา boundary)
+  const FIXED = { '01':14, '11':6, '17':6, '07':6, '30':2 };
+  const VAR   = ['10','21','91','92','96'];
+  const KNOWN = [...Object.keys(FIXED), ...VAR];
+
+  function nextAI(s, start) {
+    for (let j = start + 1; j < s.length - 1; j++) {
+      if (KNOWN.includes(s.substr(j, 2))) return j;
+    }
+    return s.length;
+  }
+
+  let i = 0;
+  while (i < raw.length - 1) {
+    const ai2 = raw.substr(i, 2);
+    if (FIXED[ai2] !== undefined) {
+      const len = FIXED[ai2];
+      const val = raw.substr(i + 2, len);
+      if (ai2 === '01') d.gtin = val;
+      else if (ai2 === '11') d.mfgDate = fmtDate(val);
+      else if (ai2 === '17') d.expiry = fmtDate(val);
+      i += 2 + len;
+    } else if (VAR.includes(ai2)) {
+      i += 2;
+      const end = nextAI(raw, i);
+      const val = raw.substring(i, end);
+      if (ai2 === '10') d.lot = val;
+      else if (ai2 === '21') d.sn = val;
+      i = end;
+    } else {
+      i++;
+    }
+  }
+  return d;
+}
+
+function fmtDate(s) {
+  // YYMMDD → 20YY-MM-DD
+  if (!s || s.length !== 6) return s || '';
+  if (!/^\d{6}$/.test(s)) return s;
+  return '20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6);
+}
+
+function cleanText(raw) {
+  return String(raw || '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+    .toUpperCase();
 }
 
 function parseCode(raw) {
@@ -561,73 +637,20 @@ function parseCode(raw) {
   if (IS_PROCESSING) return;
   if (cleaned === LAST_SCAN_TEXT && (now - LAST_SCAN_TIME) < DUP_MS) return;
 
-  const d = { raw: cleaned, sn:'', lot:'', gtin:'', mfgDate:'', expiry:'', ref:'' };
+  // ใช้ raw (ก่อน cleanText) สำหรับ paren format เพราะ i069 มีตัวเล็ก
+  const inputForParse = String(raw || '').replace(/[^\x20-\x7E]/g, '').trim();
+  const d = parseGS1(inputForParse);
+  d.raw = cleaned;
 
-  const re = /\(01\)(\d{14})|\(10\)([A-Z0-9\-]+)|\(21\)([A-Z0-9\-]+)|\(11\)(\d{6})|\(17\)(\d{6})/g;
-  let m;
-  while ((m = re.exec(cleaned)) !== null) {
-    if (m[1]) d.gtin = m[1];
-    else if (m[2]) d.lot = m[2];
-    else if (m[3]) d.sn = m[3];
-    else if (m[4]) d.mfgDate = fd(m[4]);
-    else if (m[5]) d.expiry = fd(m[5]);
-  }
-  const gtin = cleaned.match(/^01(\d{14})/);
-  if (gtin) d.gtin = gtin[1];
-
-  // 🔥 หา mfg date จากตำแหน่ง GTIN แบบ fix
-  const idx01 = cleaned.indexOf('01');
-  if (idx01 !== -1 && cleaned.length >= idx01 + 24) {
-  const possible = cleaned.substr(idx01 + 16, 8); // 11 + 6 digits
-  if (possible.startsWith('11')) {
-  const rawDate = possible.substr(2, 6);
-  if (/^\d{6}$/.test(rawDate)) {
-  d.mfgDate = fd(rawDate);
-    }
-  }
-}
-
-  // 🔥 หา SN แบบ fix
-  const idx21 = cleaned.indexOf('21');
-  if (idx21 !== -1) {
-  let snRaw = cleaned.substring(idx21 + 2);
-
-  const stopIdx = snRaw.search(/10|11|17/);
-  if (stopIdx !== -1) {
-    snRaw = snRaw.substring(0, stopIdx);
+  // fallback: ถ้าไม่ได้อะไรเลย ใช้ทั้ง string เป็น SN
+  if (!d.sn && !d.lot && !d.gtin) {
+    if (/^\d{16,20}$/.test(cleaned)) d.sn = cleaned;
+    else if (cleaned.length > 4) d.sn = cleaned;
   }
 
-}
-if (!d.lot) {
-  // รองรับทั้ง (01)xxxxxxxxxxxxxxxx และ 01xxxxxxxxxxxxxxxxx
-  const hasParens = cleaned.includes('(01)');
-  const gtinEnd = hasParens
-    ? cleaned.indexOf('(01)') + 4 + 14 + 4  // (01) + 14 digits + (10)
-    : cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
-  const afterGtin = cleaned.slice(gtinEnd);
-  const lot = afterGtin.match(/(?:\(10\)|10)(BY-[A-Z0-9\-]+)/)
-           || afterGtin.match(/(?:\(10\)|10)([A-Z0-9\-]{6,}?)(?:\(11\)|\(21\)|11|21|17|$)/);
-  if (lot) d.lot = normalizeLot(lot[1]);
-}
-  
-  if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
-    const maybeGtin = cleaned.slice(2, 16);
-    if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
-  }
-
-
-  if (!d.sn) {
-    const idx21 = cleaned.indexOf('21');
-    const idx10 = cleaned.indexOf('10');
-    if (idx21 !== -1 && idx10 !== -1 && idx21 < idx10) {
-      d.sn = cleaned.slice(idx21 + 2, idx10);
-    } else if (idx21 !== -1) {
-      d.sn = cleaned.slice(idx21 + 2);
-    }
-  }
-
-  if (!d.sn && /^\d{16,20}$/.test(cleaned)) d.sn = cleaned;
-  if (!d.sn && !d.lot && cleaned.length > 4 && !cleaned.startsWith('(')) d.sn = cleaned;
+  // normalize
+  d.lot = normalizeLot(d.lot);
+  d.gtin = (d.gtin || '').replace(/\s/g,'').replace(/^0+/,'');
 
   d.p = lookup(d);
 
@@ -640,45 +663,64 @@ if (!d.lot) {
   toast('สแกนสำเร็จ', 'ok');
 }
 
+// ============================================================
+// PRODUCT DB — อัปเดตครบ
+// ============================================================
 function lookup(d) {
-  const gtinRaw = cleanText(d.gtin).replace(/^0+/, '');
-  const lot = normalizeLot(d.lot);
-  const sn = cleanText(d.sn);
+  const gtinRaw = (d.gtin || '').replace(/^0+/, '');
+  const lot = d.lot || '';
+  const sn  = d.sn  || '';
 
   const db = [
-  { gtin:'4719893347081', name:'APEX iX Auto + Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto + Humidifier' },
-  { gtin:'4713025000400', name:'APEX iX Auto', brand:'APEX Medical', type:'device', model:'iX Auto' },
-  { gtin:'4713025000226', name:'APEX iX Auto Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
-  { gtin:'4713025000073', name:'APEX XT Auto', brand:'APEX Medical', type:'device', model:'XT Auto' },
-  { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask', brand:'Wellell', type:'mask', model:'WiZARD 510' },
-  { gtin:'4719893347982', name:'WiZARD 310 Nasal Mask', brand:'Wellell', type:'mask', model:'WiZARD 310' },
-  { gtin:'4719893348194', name:'WiZARD 320 Full Face Mask', brand:'Wellell', type:'mask', model:'WiZARD 320' },
-  { gtin:'606959006829',  name:'Philips Wisp Mask Fabric', brand:'Philips Respironics', type:'mask', model:'Wisp' },
-  { gtin:'6958949938318', name:'Beyond EaseFit NM5', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5', size:'M', ref:'78066' },
-  { gtin:'6958949938561', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
-  { gtin:'6958949938493', name:'Beyond EaseFit NM6', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
-  { gtin:'6958949938370', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
-  { gtin:'6958949937694', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
-  { gtin:'6958949937687', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
-  { gtin:'6958949932057', name:'Breathing Tube HP1', brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
-  { gtin:'6958949927319', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
-  { sn_exact:'26B17',  name:'APEX Unknown Device 26B17',  brand:'APEX Medical', type:'device', model:'Unknown' },
-  { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
-  { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
-  { sn_pfx:'CADL', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
-  { lot_pfx:'BY-C2506NM5',  name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5' },
-  { lot_pfx:'BY-C2411NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
-  { lot_pfx:'BY-C2502NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
-  { lot_pfx:'BY-C2509NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A' },
-  { lot_pfx:'BY-C2601NM6A', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
-  { lot_pfx:'BY-C2509NM6A', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A' },
-  { lot_pfx:'BY-C2506NM6',  name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
-  { lot_pfx:'BY-C2312PMI',  name:'Beyond EaseFit PMI',  brand:'Hunan Beyond', type:'mask', model:'EaseFit PMI' },
-  { lot_pfx:'BY-B2501S',    name:'Beyond SpO2 Kits',    brand:'Hunan Beyond', type:'accessory', model:'SpO2 Kit' },
-  { lot_pfx:'BY-C2601R20',  name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
-  { lot_pfx:'BY-C2601R20I', name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
-  { lot_pfx:'BY-C2502HP1',  name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
-];
+    // APEX
+    { gtin:'4719893347081', name:'APEX iX Auto + Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto + Humidifier' },
+    { gtin:'4713025000400', name:'APEX iX Auto',              brand:'APEX Medical', type:'device', model:'iX Auto' },
+    { gtin:'4713025000226', name:'APEX iX Auto Humidifier',   brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
+    { gtin:'4713025000073', name:'APEX XT Auto',              brand:'APEX Medical', type:'device', model:'XT Auto' },
+
+    // Wellell / WiZARD
+    { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask',     brand:'Wellell', type:'mask', model:'WiZARD 510' },
+    { gtin:'4719893347982', name:'WiZARD 310 Nasal Mask',     brand:'Wellell', type:'mask', model:'WiZARD 310' },
+    { gtin:'4719893348194', name:'WiZARD 320 Full Face Mask', brand:'Wellell', type:'mask', model:'WiZARD 320' },
+
+    // Philips
+    { gtin:'606959006829',  name:'Philips Wisp Mask Fabric',  brand:'Philips Respironics', type:'mask', model:'Wisp' },
+
+    // Beyond Masks
+    { gtin:'6958949938318', name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5',  size:'M', ref:'78066' },
+    { gtin:'6958949938561', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { gtin:'6958949938493', name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6',  size:'L', ref:'78084' },
+    { gtin:'6958949938370', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { gtin:'6958949937694', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+    { gtin:'6958949937687', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+
+    // Beyond Accessory
+    { gtin:'6958949932057', name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+
+    // Beyond Device R-20i — GTIN ใหม่
+    { gtin:'6958949927319', name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
+
+    // SN exact
+    { sn_exact:'26B17',  name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
+    { sn_exact:'25J100', name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
+    { sn_exact:'26B39',  name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
+
+    // SN prefix
+    { sn_pfx:'CADL', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
+
+    // LOT prefix — Beyond masks (fallback)
+    { lot_pfx:'BY-C2506NM5',    name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5' },
+    { lot_pfx:'BY-C2411NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { lot_pfx:'BY-C2502NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+    { lot_pfx:'BY-C2509NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { lot_pfx:'BY-C2312PMI',    name:'Beyond EaseFit PMI',  brand:'Hunan Beyond', type:'mask', model:'EaseFit PMI' },
+    { lot_pfx:'BY-B2501S',      name:'Beyond SpO2 Kits',    brand:'Hunan Beyond', type:'accessory', model:'SpO2 Kit' },
+    { lot_pfx:'BY-C2601R20',    name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
+    { lot_pfx:'BY-C2506NM6',    name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
+    { lot_pfx:'BY-C2509NM6A',   name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { lot_pfx:'BY-C2601NM6A',   name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { lot_pfx:'BY-C2502HP1',    name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+  ];
 
   for (const p of db) {
     if (p.gtin && gtinRaw === p.gtin) return p;
@@ -689,7 +731,6 @@ function lookup(d) {
 
   return inferFromLot(lot);
 }
-
 function inferFromLot(lot) {
   if (!lot) return null;
 
