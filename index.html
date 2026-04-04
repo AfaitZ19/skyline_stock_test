@@ -545,18 +545,12 @@ function fd(s) {
 function normalizeLot(lot) {
   lot = cleanText(lot);
   if (!lot) return '';
-
   const idxBy = lot.indexOf('BY-');
   if (idxBy !== -1) {
     lot = lot.substring(idxBy);
-  } else {
-    lot = lot.replace(/^\d{10,}/, '');
   }
-
-  // ตัด internal factory code เช่น C.03.05.01.03.000002 ออก
-  lot = lot.replace(/C\.\d+(?:\.\d+)*/g, '');
-
-  return lot.trim();
+  lot = lot.replace(/C\.\d+(?:\.\d+)+/g, '').trim();
+  return lot;
 }
 
 function parseCode(raw) {
@@ -615,23 +609,6 @@ function parseCode(raw) {
     if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
   }
 
- function normalizeLot(lot) {
-  lot = cleanText(lot);
-  if (!lot) return '';
-
-  const idxBy = lot.indexOf('BY-');
-  if (idxBy !== -1) {
-    lot = lot.substring(idxBy);
-  }
-
-  // 🔥 ตัด AI 91 + ทุกอย่างหลังจากนั้น
-  lot = lot.replace(/91.*$/, '');
-
-  // 🔥 ตัด .03.05... (internal code)
-  lot = lot.replace(/\..*$/, '');
-
-  return lot.trim();
-}
 
   if (!d.sn) {
     const idx21 = cleaned.indexOf('21');
