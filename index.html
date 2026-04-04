@@ -660,35 +660,39 @@ function lookup(d) {
   const sn = cleanText(d.sn);
 
   const db = [
-    { gtin:'4719893347081', name:'APEX iX Auto + Humidifier',  brand:'APEX Medical',        type:'device',    model:'iX Auto + Humidifier' },
-    { gtin:'4713025000400', name:'APEX iX Auto',               brand:'APEX Medical',        type:'device',    model:'iX Auto' },
-    { gtin:'4713025000226', name:'APEX iX Auto Humidifier',    brand:'APEX Medical',        type:'device',    model:'iX Auto Humidifier' },
-    { gtin:'4713025000073', name:'APEX XT Auto',               brand:'APEX Medical',        type:'device',    model:'XT Auto' },
-
-    { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask',      brand:'Wellell',             type:'mask',      model:'WiZARD 510' },
-    { gtin:'606959006829',  name:'Philips Wisp Mask Fabric',   brand:'Philips Respironics', type:'mask',      model:'Wisp' },
-
-    { gtin:'6958949938318', name:'Beyond EaseFit NM5',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5',  size:'M', ref:'78066' },
-    { gtin:'695894993856',  name:'Beyond EaseFit NM6A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM6A', size:'M', ref:'78091' },
-    { gtin:'695894993849',  name:'Beyond EaseFit NM6',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM6',  size:'L', ref:'78084' },
-    { gtin:'695894993837',  name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
-    { gtin:'6958949937694', name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
-    { gtin:'6958949937687', name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
-    { gtin:'6958949932057', name:'Breathing Tube HP1',         brand:'Hunan Beyond',        type:'accessory', model:'HP1', ref:'74001EU' },
-
-    { sn_exact:'26B17',  name:'APEX Unknown Device 26B17',  brand:'APEX Medical', type:'device', model:'Unknown' },
-    { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
-    { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
-
-    { sn_pfx:'CADL',         name:'Beyond R-20i CPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
-    { lot_pfx:'BY-C2506NM5', name:'Beyond EaseFit NM5',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5' },
-    { lot_pfx:'BY-C2411NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'L', ref:'78072' },
-    { lot_pfx:'BY-C2502NM5A',name:'Beyond EaseFit NM5A',        brand:'Hunan Beyond',        type:'mask',      model:'EaseFit NM5A', size:'M', ref:'PT78044' },
-    { lot_pfx:'BY-C2312PMI', name:'Beyond EaseFit PMI',         brand:'Hunan Beyond',        type:'mask',      model:'EaseFit PMI' },
-    { lot_pfx:'BY-B2501S',   name:'Beyond SpO2 Kits',           brand:'Hunan Beyond',        type:'accessory', model:'SpO2 Kit' },
-    { lot_pfx:'BY-C2601R20', name:'Beyond R-20i CPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' },
-    { lot_pfx:'BY-C2601R20I',name:'Beyond R-20i CPAP',          brand:'Hunan Beyond',        type:'device',    model:'R-20i' }
-  ];
+  { gtin:'4719893347081', name:'APEX iX Auto + Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto + Humidifier' },
+  { gtin:'4713025000400', name:'APEX iX Auto', brand:'APEX Medical', type:'device', model:'iX Auto' },
+  { gtin:'4713025000226', name:'APEX iX Auto Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
+  { gtin:'4713025000073', name:'APEX XT Auto', brand:'APEX Medical', type:'device', model:'XT Auto' },
+  { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask', brand:'Wellell', type:'mask', model:'WiZARD 510' },
+  { gtin:'4719893347982', name:'WiZARD 310 Nasal Mask', brand:'Wellell', type:'mask', model:'WiZARD 310' },
+  { gtin:'4719893348194', name:'WiZARD 320 Full Face Mask', brand:'Wellell', type:'mask', model:'WiZARD 320' },
+  { gtin:'606959006829',  name:'Philips Wisp Mask Fabric', brand:'Philips Respironics', type:'mask', model:'Wisp' },
+  { gtin:'6958949938318', name:'Beyond EaseFit NM5', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5', size:'M', ref:'78066' },
+  { gtin:'6958949938561', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+  { gtin:'6958949938493', name:'Beyond EaseFit NM6', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
+  { gtin:'6958949938370', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+  { gtin:'6958949937694', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+  { gtin:'6958949937687', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+  { gtin:'6958949932057', name:'Breathing Tube HP1', brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+  { gtin:'6958949927319', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
+  { sn_exact:'26B17',  name:'APEX Unknown Device 26B17',  brand:'APEX Medical', type:'device', model:'Unknown' },
+  { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
+  { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
+  { sn_pfx:'CADL', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
+  { lot_pfx:'BY-C2506NM5',  name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5' },
+  { lot_pfx:'BY-C2411NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+  { lot_pfx:'BY-C2502NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+  { lot_pfx:'BY-C2509NM5A', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A' },
+  { lot_pfx:'BY-C2601NM6A', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+  { lot_pfx:'BY-C2509NM6A', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A' },
+  { lot_pfx:'BY-C2506NM6',  name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
+  { lot_pfx:'BY-C2312PMI',  name:'Beyond EaseFit PMI',  brand:'Hunan Beyond', type:'mask', model:'EaseFit PMI' },
+  { lot_pfx:'BY-B2501S',    name:'Beyond SpO2 Kits',    brand:'Hunan Beyond', type:'accessory', model:'SpO2 Kit' },
+  { lot_pfx:'BY-C2601R20',  name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
+  { lot_pfx:'BY-C2601R20I', name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
+  { lot_pfx:'BY-C2502HP1',  name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+];
 
   for (const p of db) {
     if (p.gtin && gtinRaw === p.gtin) return p;
