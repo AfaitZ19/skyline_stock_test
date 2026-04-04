@@ -598,12 +598,15 @@ function parseCode(raw) {
   }
 
 }
-  // ถ้า GS1 explicit (มี parentheses) จับ LOT จาก (10) ก่อนเลย
 if (!d.lot) {
-  const gtinEnd = cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
+  // รองรับทั้ง (01)xxxxxxxxxxxxxxxx และ 01xxxxxxxxxxxxxxxxx
+  const hasParens = cleaned.includes('(01)');
+  const gtinEnd = hasParens
+    ? cleaned.indexOf('(01)') + 4 + 14 + 4  // (01) + 14 digits + (10)
+    : cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
   const afterGtin = cleaned.slice(gtinEnd);
-  const lot = afterGtin.match(/10(BY-[A-Z0-9\-]+)/)
-           || afterGtin.match(/10([A-Z0-9\-]{6,})(11|21|17|$)/);
+  const lot = afterGtin.match(/(?:\(10\)|10)(BY-[A-Z0-9\-]+)/)
+           || afterGtin.match(/(?:\(10\)|10)([A-Z0-9\-]{6,}?)(?:\(11\)|\(21\)|11|21|17|$)/);
   if (lot) d.lot = normalizeLot(lot[1]);
 }
   
