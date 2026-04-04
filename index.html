@@ -298,7 +298,6 @@ let IS_PROCESSING = false;
 let LAST_SCAN_TEXT = '';
 let LAST_SCAN_TIME = 0;
 const DUP_MS = 8000;
-
 let HID_ENABLED = false;
 let hidBufferTimer = null;
 
@@ -308,21 +307,14 @@ window.onload = () => {
   setupHidScanner();
 };
 
-function getHidInput() {
-  return document.getElementById('hidInput');
-}
-
+// ── HID Scanner ──────────────────────────────────────────────
+function getHidInput() { return document.getElementById('hidInput'); }
 function focusHidInput() {
   if (!HID_ENABLED) return;
   const el = getHidInput();
-  if (!el) return;
-  try { el.focus(); } catch (e) {}
+  if (el) try { el.focus(); } catch(e) {}
 }
-
-function clearHidInput() {
-  const el = getHidInput();
-  if (el) el.value = '';
-}
+function clearHidInput() { const el = getHidInput(); if (el) el.value = ''; }
 
 function toggleHIDMode() {
   HID_ENABLED = !HID_ENABLED;
@@ -351,152 +343,96 @@ function focusManualInput() {
 function processScannerText(text) {
   const code = String(text || '').trim();
   if (!code) return;
-
   parseCode(code);
-
   if (MODE === 'in') {
-    setTimeout(() => {
-      if (LAST) doAct('in');
-    }, 80);
+    setTimeout(() => { if (LAST) doAct('in'); }, 80);
     return;
   }
-
   if (MODE === 'out') {
     const loc = document.getElementById('locI')?.value.trim();
-    if (loc) {
-      setTimeout(() => {
-        if (LAST) doAct('out');
-      }, 80);
-    }
+    if (loc) setTimeout(() => { if (LAST) doAct('out'); }, 80);
   }
 }
 
 function setupHidScanner() {
   const el = getHidInput();
   if (!el) return;
-
   el.addEventListener('keydown', (e) => {
     if (!HID_ENABLED) return;
-
     if (e.key === 'Enter') {
       e.preventDefault();
-      const code = el.value;
-      clearHidInput();
-      processScannerText(code);
-      focusHidInput();
-      return;
+      const code = el.value; clearHidInput();
+      processScannerText(code); focusHidInput(); return;
     }
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-    }
+    if (e.key === 'Tab') e.preventDefault();
   });
-
   el.addEventListener('input', () => {
     if (!HID_ENABLED) return;
-
     clearTimeout(hidBufferTimer);
     hidBufferTimer = setTimeout(() => {
       const code = el.value;
-      if (code && code.length >= 4) {
-        clearHidInput();
-        processScannerText(code);
-      }
+      if (code && code.length >= 4) { clearHidInput(); processScannerText(code); }
       focusHidInput();
     }, 250);
   });
-
-  document.addEventListener('click', () => {
-    if (HID_ENABLED) setTimeout(focusHidInput, 50);
-  });
-
+  document.addEventListener('click', () => { if (HID_ENABLED) setTimeout(focusHidInput, 50); });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && HID_ENABLED) {
-      setTimeout(focusHidInput, 150);
-    }
+    if (!document.hidden && HID_ENABLED) setTimeout(focusHidInput, 150);
   });
 }
 
+// ── Auth / Setup ─────────────────────────────────────────────
 async function doSetup() {
   const url  = document.getElementById('apiUrl').value.trim();
   const user = document.getElementById('setupUser').value.trim();
   const pass = document.getElementById('setupPass').value;
   const errEl = document.getElementById('setupErr');
-
-  if (!url) { showSetupErr('กรุณาใส่ Apps Script URL'); return; }
+  if (!url)  { showSetupErr('กรุณาใส่ Apps Script URL'); return; }
   if (!user) { showSetupErr('กรุณาใส่ชื่อผู้ใช้'); return; }
   if (!USERS[user] || USERS[user] !== pass) { showSetupErr('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
-
-  errEl.style.display = 'none';
-  setPill('busy');
-
+  errEl.style.display = 'none'; setPill('busy');
   try {
     const r = await apiFetch(url + '?action=ping');
     if (!r.ok) throw new Error(r.error || 'API error');
-  } catch(e) {
-    showSetupErr('เชื่อมต่อ API ไม่ได้: ' + e.message);
-    setPill('err');
-    return;
-  }
-
-  API_URL  = url;
-  CUR_USER = user;
+  } catch(e) { showSetupErr('เชื่อมต่อ API ไม่ได้: ' + e.message); setPill('err'); return; }
+  API_URL = url; CUR_USER = user;
   localStorage.setItem('skl_api', url);
-
   document.getElementById('scSetup').classList.remove('on');
   document.getElementById('scApp').classList.add('on');
   document.getElementById('usrBadge').textContent = user;
-
-  toast('✅ เชื่อมต่อ Sheet สำเร็จ', 'ok');
-  setPill('ok');
+  toast('✅ เชื่อมต่อ Sheet สำเร็จ', 'ok'); setPill('ok');
   await loadAll();
   document.getElementById('mc').focus();
 }
 
 function signOut() {
-  CUR_USER = '';
-  LAST = null;
-  stopScannerOnly();
+  CUR_USER = ''; LAST = null; stopScannerOnly();
   document.getElementById('scApp').classList.remove('on');
   document.getElementById('scSetup').classList.add('on');
   document.getElementById('setupPass').value = '';
   resetScan();
 }
-
-function changeApiUrl() {
-  localStorage.removeItem('skl_api');
-  signOut();
-}
-
+function changeApiUrl() { localStorage.removeItem('skl_api'); signOut(); }
 function showSetupErr(msg) {
   const errEl = document.getElementById('setupErr');
-  errEl.textContent = msg;
-  errEl.style.display = 'block';
+  errEl.textContent = msg; errEl.style.display = 'block';
 }
 
+// ── API ──────────────────────────────────────────────────────
 async function apiFetch(url) {
-  try {
-    const r = await fetch(url, { redirect:'follow', mode:'cors' });
-    return r.json();
-  } catch(e) {
-    const r = await fetch(url, { redirect:'follow', credentials:'omit' });
-    return r.json();
-  }
+  try { const r = await fetch(url, { redirect:'follow', mode:'cors' }); return r.json(); }
+  catch(e) { const r = await fetch(url, { redirect:'follow', credentials:'omit' }); return r.json(); }
 }
-
 async function apiPost(body) {
   const r = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    redirect: 'follow',
-    credentials: 'omit'
+    method:'POST', body:JSON.stringify(body),
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    redirect:'follow', credentials:'omit'
   });
   const txt = await r.text();
   try { return JSON.parse(txt); }
   catch(e) { throw new Error('Response not JSON: ' + txt.slice(0,120)); }
 }
-
 async function loadAll() {
   setPill('busy');
   try {
@@ -504,132 +440,108 @@ async function loadAll() {
       apiFetch(API_URL + '?action=stock'),
       apiFetch(API_URL + '?action=history&n=200'),
     ]);
-
     if (!stock.ok) throw new Error(stock.error);
-
     CACHE.device    = stock.device || [];
     CACHE.mask      = stock.mask || [];
     CACHE.accessory = stock.accessory || [];
     CACHE.history   = (hist && hist.history) ? hist.history : [];
-
-    renderStock();
-    renderHist();
-    updateStats();
-
-    setPill('ok');
+    renderStock(); renderHist(); updateStats(); setPill('ok');
     document.getElementById('connTxt').innerHTML =
-      `✅ เชื่อมต่อสำเร็จ<br>เครื่อง ${CACHE.device.length} | หน้ากาก ${sumQty(CACHE.mask, 'Qty')} | เสริม ${sumQty(CACHE.accessory, 'Qty')}<br>อัปเดต: ${new Date().toLocaleTimeString('th-TH')}`;
+      `✅ เชื่อมต่อสำเร็จ<br>เครื่อง ${CACHE.device.length} | หน้ากาก ${sumQty(CACHE.mask,'Qty')} | เสริม ${sumQty(CACHE.accessory,'Qty')}<br>อัปเดต: ${new Date().toLocaleTimeString('th-TH')}`;
   } catch(e) {
     setPill('err');
     document.getElementById('connTxt').textContent = '❌ ' + e.message;
     toast('โหลดข้อมูลไม่ได้: ' + e.message, 'err');
   }
 }
+function sumQty(arr, key) { return (arr||[]).reduce((s,x)=>s+Number(x[key]||0),0); }
 
-function sumQty(arr, key) {
-  return (arr || []).reduce((sum, x) => sum + Number(x[key] || 0), 0);
+// ── GS1 Parser ───────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 function cleanText(raw) {
-  return String(raw || '')
-    .replace(/[^\x20-\x7E]/g, '')
-    .replace(/\s+/g, '')
-    .trim()
-    .toUpperCase();
+  return String(raw||'').replace(/[^\x20-\x7E]/g,'').replace(/\s+/g,'').trim().toUpperCase();
 }
 
-function fd(s) {
-  return s.length === 6 ? '20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6) : s;
+function fmtDate(s) {
+  s = String(s||'').replace(/\s/g,'');
+  if (s.length !== 6 || !/^\d{6}$/.test(s)) return s;
+  return '20'+s.slice(0,2)+'-'+s.slice(2,4)+'-'+s.slice(4,6);
 }
 
-// ============================================================
-// GS1 PARSER — รองรับทั้ง (01)... และ plain 01...
-// ============================================================
 function normalizeLot(lot) {
-  lot = String(lot || '').replace(/[^\x20-\x7E]/g, '').trim().toUpperCase();
+  lot = String(lot||'').replace(/[^\x20-\x7E]/g,'').trim().toUpperCase();
   if (!lot) return '';
   const idxBy = lot.indexOf('BY-');
   if (idxBy !== -1) return lot.substring(idxBy);
-  // ตัด leading digits (GS1 junk) แต่ไม่ตัด trailing digits (เช่น HP1070)
-  lot = lot.replace(/^\d{10,}/, '');
+  lot = lot.replace(/^\d{10,}/,'');
   return lot.trim();
 }
 
 function parseGS1(raw) {
-  const d = { sn:'', lot:'', gtin:'', mfgDate:'', expiry:'', ref:'' };
-
-  // รองรับ 2 format: มีวงเล็บ (01)... และไม่มี 01...
+  const d = { sn:'', lot:'', gtin:'', mfgDate:'', expiry:'' };
   const hasParen = raw.includes('(');
 
   if (hasParen) {
-    // Format: (01)06958949927319(11)260115(21)CADL3C00437(10)BY-C2601R20i069
+    // Format แบบมีวงเล็บ: (01)...(10)...(21)...
+    // ใช้ raw ตรงๆ ไม่ uppercase เพราะ SN/LOT อาจมีตัวเล็ก เช่น R20i
     const re = /\((\d{2,3})\)([^(]*)/g;
     let m;
     while ((m = re.exec(raw)) !== null) {
       const ai = m[1], val = m[2].trim();
-      if (ai === '01') d.gtin = val.replace(/\s/g,'').slice(0,14);
-      else if (ai === '10') d.lot = val;
-      else if (ai === '21') d.sn = val;
-      else if (ai === '11') d.mfgDate = fmtDate(val.replace(/\s/g,'').slice(0,6));
-      else if (ai === '17') d.expiry = fmtDate(val.replace(/\s/g,'').slice(0,6));
+      if      (ai==='01') d.gtin    = val.replace(/\s/g,'').slice(0,14);
+      else if (ai==='10') d.lot     = val;
+      else if (ai==='21') d.sn      = val;
+      else if (ai==='11') d.mfgDate = fmtDate(val.replace(/\s/g,'').slice(0,6));
+      else if (ai==='17') d.expiry  = fmtDate(val.replace(/\s/g,'').slice(0,6));
     }
     return d;
   }
 
-  // Format: plain GS1 ไม่มีวงเล็บ
-  // AI ที่รู้จัก + ความยาว fixed: 01(14), 11(6), 17(6)
-  // AI variable length: 10, 21 (ต้องหา boundary)
-  const FIXED = { '01':14, '11':6, '17':6, '07':6, '30':2 };
+  // Format plain GS1 ไม่มีวงเล็บ: 010695894993205710BY-C2502HP107011250212
+  // AI fixed length (AI + data length)
+  const FIXED = { '01':14, '11':6, '17':6, '30':2 };
+  // AI variable length — อ่านจนเจอ AI ถัดไป
+  // หมายเหตุ: '07' ไม่ใช่ standard GS1 จึงไม่ใส่ใน KNOWN เพื่อให้ parser ข้ามผ่าน
   const VAR   = ['10','21','91','92','96'];
   const KNOWN = [...Object.keys(FIXED), ...VAR];
 
   function nextAI(s, start) {
-    for (let j = start + 1; j < s.length - 1; j++) {
-      if (KNOWN.includes(s.substr(j, 2))) return j;
+    for (let j = start+1; j < s.length-1; j++) {
+      if (KNOWN.includes(s.substr(j,2))) return j;
     }
     return s.length;
   }
 
   let i = 0;
   while (i < raw.length - 1) {
-    const ai2 = raw.substr(i, 2);
+    const ai2 = raw.substr(i,2);
     if (FIXED[ai2] !== undefined) {
       const len = FIXED[ai2];
-      const val = raw.substr(i + 2, len);
-      if (ai2 === '01') d.gtin = val;
-      else if (ai2 === '11') d.mfgDate = fmtDate(val);
-      else if (ai2 === '17') d.expiry = fmtDate(val);
+      const val = raw.substr(i+2, len);
+      if      (ai2==='01') d.gtin    = val;
+      else if (ai2==='11') d.mfgDate = fmtDate(val);
+      else if (ai2==='17') d.expiry  = fmtDate(val);
       i += 2 + len;
     } else if (VAR.includes(ai2)) {
       i += 2;
       const end = nextAI(raw, i);
       const val = raw.substring(i, end);
-      if (ai2 === '10') d.lot = val;
-      else if (ai2 === '21') d.sn = val;
+      if      (ai2==='10') d.lot = val;
+      else if (ai2==='21') d.sn  = val;
       i = end;
     } else {
-      i++;
+      i++; // ข้าม byte ที่ไม่รู้จัก (เช่น 07 ของ Beyond)
     }
   }
   return d;
 }
 
-function fmtDate(s) {
-  // YYMMDD → 20YY-MM-DD
-  if (!s || s.length !== 6) return s || '';
-  if (!/^\d{6}$/.test(s)) return s;
-  return '20' + s.slice(0,2) + '-' + s.slice(2,4) + '-' + s.slice(4,6);
-}
-
-function cleanText(raw) {
-  return String(raw || '')
-    .replace(/[^\x20-\x7E]/g, '')
-    .replace(/\s+/g, '')
-    .trim()
-    .toUpperCase();
-}
-
 function parseCode(raw) {
+  if (!raw) return;
   const cleaned = cleanText(raw);
   if (!cleaned) return;
 
@@ -637,20 +549,20 @@ function parseCode(raw) {
   if (IS_PROCESSING) return;
   if (cleaned === LAST_SCAN_TEXT && (now - LAST_SCAN_TIME) < DUP_MS) return;
 
-  // ใช้ raw (ก่อน cleanText) สำหรับ paren format เพราะ i069 มีตัวเล็ก
-  const inputForParse = String(raw || '').replace(/[^\x20-\x7E]/g, '').trim();
+  // ใช้ raw (preserve case) สำหรับ paren format — R20i มีตัวเล็ก
+  const inputForParse = String(raw).replace(/[^\x20-\x7E]/g,'').trim();
   const d = parseGS1(inputForParse);
   d.raw = cleaned;
 
-  // fallback: ถ้าไม่ได้อะไรเลย ใช้ทั้ง string เป็น SN
+  // fallback
   if (!d.sn && !d.lot && !d.gtin) {
     if (/^\d{16,20}$/.test(cleaned)) d.sn = cleaned;
-    else if (cleaned.length > 4) d.sn = cleaned;
+    else if (cleaned.length > 4)     d.sn = cleaned;
   }
 
   // normalize
-  d.lot = normalizeLot(d.lot);
-  d.gtin = (d.gtin || '').replace(/\s/g,'').replace(/^0+/,'');
+  d.lot  = normalizeLot(d.lot);
+  d.gtin = (d.gtin||'').replace(/\s/g,'').replace(/^0+/,'');
 
   d.p = lookup(d);
 
@@ -663,30 +575,28 @@ function parseCode(raw) {
   toast('สแกนสำเร็จ', 'ok');
 }
 
-// ============================================================
-// PRODUCT DB — อัปเดตครบ
-// ============================================================
+// ── Product DB ───────────────────────────────────────────────
 function lookup(d) {
-  const gtinRaw = (d.gtin || '').replace(/^0+/, '');
+  const gtinRaw = (d.gtin||'').replace(/^0+/,'');
   const lot = d.lot || '';
   const sn  = d.sn  || '';
 
   const db = [
-    // APEX
+    // ── APEX ──
     { gtin:'4719893347081', name:'APEX iX Auto + Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto + Humidifier' },
     { gtin:'4713025000400', name:'APEX iX Auto',              brand:'APEX Medical', type:'device', model:'iX Auto' },
     { gtin:'4713025000226', name:'APEX iX Auto Humidifier',   brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
     { gtin:'4713025000073', name:'APEX XT Auto',              brand:'APEX Medical', type:'device', model:'XT Auto' },
 
-    // Wellell / WiZARD
+    // ── Wellell WiZARD ──
     { gtin:'4719893347319', name:'WiZARD 510 Nasal Mask',     brand:'Wellell', type:'mask', model:'WiZARD 510' },
     { gtin:'4719893347982', name:'WiZARD 310 Nasal Mask',     brand:'Wellell', type:'mask', model:'WiZARD 310' },
     { gtin:'4719893348194', name:'WiZARD 320 Full Face Mask', brand:'Wellell', type:'mask', model:'WiZARD 320' },
 
-    // Philips
+    // ── Philips ──
     { gtin:'606959006829',  name:'Philips Wisp Mask Fabric',  brand:'Philips Respironics', type:'mask', model:'Wisp' },
 
-    // Beyond Masks
+    // ── Beyond Masks ──
     { gtin:'6958949938318', name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5',  size:'M', ref:'78066' },
     { gtin:'6958949938561', name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
     { gtin:'6958949938493', name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6',  size:'L', ref:'78084' },
@@ -694,80 +604,81 @@ function lookup(d) {
     { gtin:'6958949937694', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
     { gtin:'6958949937687', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
 
-    // Beyond Accessory
+    // ── Beyond Accessory ──
     { gtin:'6958949932057', name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
 
-    // Beyond Device R-20i — GTIN ใหม่
+    // ── Beyond Device ──
     { gtin:'6958949927319', name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
 
-    // SN exact
-    { sn_exact:'26B17',  name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
-    { sn_exact:'25J100', name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
-    { sn_exact:'26B39',  name:'APEX Unknown Device', brand:'APEX Medical', type:'device', model:'Unknown' },
+    // ── SN exact (APEX legacy) ──
+    { sn_exact:'26B17',  name:'APEX iX Auto', brand:'APEX Medical', type:'device', model:'iX Auto' },
+    { sn_exact:'25J100', name:'APEX iX Auto', brand:'APEX Medical', type:'device', model:'iX Auto' },
+    { sn_exact:'26B39',  name:'APEX iX Auto', brand:'APEX Medical', type:'device', model:'iX Auto' },
 
-    // SN prefix
-    { sn_pfx:'CADL', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
+    // ── SN prefix ──
+    { sn_pfx:'CADL',         name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
+    { sn_pfx:'100123090005', name:'APEX iX Auto',         brand:'APEX Medical', type:'device', model:'iX Auto' },
+    { sn_pfx:'100123090058', name:'APEX iX Auto Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
+    { sn_pfx:'100124010179', name:'APEX iX Auto',         brand:'APEX Medical', type:'device', model:'iX Auto' },
+    { sn_pfx:'100124010180', name:'APEX iX Auto Humidifier', brand:'APEX Medical', type:'device', model:'iX Auto Humidifier' },
 
-    // LOT prefix — Beyond masks (fallback)
-    { lot_pfx:'BY-C2506NM5',    name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5' },
-    { lot_pfx:'BY-C2411NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
-    { lot_pfx:'BY-C2502NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
-    { lot_pfx:'BY-C2509NM5A',   name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
-    { lot_pfx:'BY-C2312PMI',    name:'Beyond EaseFit PMI',  brand:'Hunan Beyond', type:'mask', model:'EaseFit PMI' },
-    { lot_pfx:'BY-B2501S',      name:'Beyond SpO2 Kits',    brand:'Hunan Beyond', type:'accessory', model:'SpO2 Kit' },
-    { lot_pfx:'BY-C2601R20',    name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
-    { lot_pfx:'BY-C2506NM6',    name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
-    { lot_pfx:'BY-C2509NM6A',   name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
-    { lot_pfx:'BY-C2601NM6A',   name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
-    { lot_pfx:'BY-C2502HP1',    name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+    // ── LOT prefix (fallback) ──
+    { lot_pfx:'BY-C2502HP1',   name:'Breathing Tube HP1',  brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
+    { lot_pfx:'BY-C2506NM5',   name:'Beyond EaseFit NM5',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5', size:'M', ref:'78066' },
+    { lot_pfx:'BY-C2506NM6',   name:'Beyond EaseFit NM6',  brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6', size:'L', ref:'78084' },
+    { lot_pfx:'BY-C2509NM5A',  name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { lot_pfx:'BY-C2502NM5A',  name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'M', ref:'PT78044' },
+    { lot_pfx:'BY-C2411NM5A',  name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
+    { lot_pfx:'BY-C2509NM6A',  name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { lot_pfx:'BY-C2601NM6A',  name:'Beyond EaseFit NM6A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM6A', size:'M', ref:'78091' },
+    { lot_pfx:'BY-C2312PMI',   name:'Beyond EaseFit PMI',  brand:'Hunan Beyond', type:'mask', model:'EaseFit PMI' },
+    { lot_pfx:'BY-B2501S',     name:'Beyond SpO2 Kits',    brand:'Hunan Beyond', type:'accessory', model:'SpO2 Kit' },
+    { lot_pfx:'BY-C2601R20',   name:'Beyond R-20i CPAP',   brand:'Hunan Beyond', type:'device', model:'R-20i' },
   ];
 
   for (const p of db) {
-    if (p.gtin && gtinRaw === p.gtin) return p;
-    if (p.sn_exact && sn === p.sn_exact) return p;
-    if (p.sn_pfx && sn.startsWith(p.sn_pfx)) return p;
-    if (p.lot_pfx && lot.startsWith(p.lot_pfx)) return p;
+    if (p.gtin     && gtinRaw === p.gtin)         return p;
+    if (p.sn_exact && sn === p.sn_exact)           return p;
+    if (p.sn_pfx   && sn.startsWith(p.sn_pfx))    return p;
+    if (p.lot_pfx  && lot.startsWith(p.lot_pfx))  return p;
   }
 
   return inferFromLot(lot);
 }
+
 function inferFromLot(lot) {
   if (!lot) return null;
+  let model='', type='mask', size='', ref='', name='';
+  const brand = 'Hunan Beyond';
 
-  let model = '';
-  let type = 'mask';
-  let size = '';
-  let ref = '';
-  let name = '';
-  let brand = 'Hunan Beyond';
-
-  if (lot.includes('NM6A')) { model = 'EaseFit NM6A'; name = 'Beyond EaseFit NM6A'; }
-  else if (lot.includes('NM6')) { model = 'EaseFit NM6'; name = 'Beyond EaseFit NM6'; }
-  else if (lot.includes('NM5A')) { model = 'EaseFit NM5A'; name = 'Beyond EaseFit NM5A'; }
-  else if (lot.includes('NM5')) { model = 'EaseFit NM5'; name = 'Beyond EaseFit NM5'; }
-  else if (lot.includes('PMI')) { model = 'EaseFit PMI'; name = 'Beyond EaseFit PMI'; }
-  else if (lot.includes('R20')) { type = 'device'; model = 'R-20i'; name = 'Beyond R-20i CPAP'; }
-  else if (lot.includes('SPO2')) { type = 'accessory'; model = 'SpO2 Kit'; name = 'Beyond SpO2 Kits'; }
+  if      (lot.includes('NM6A')) { model='EaseFit NM6A'; name='Beyond EaseFit NM6A'; }
+  else if (lot.includes('NM6'))  { model='EaseFit NM6';  name='Beyond EaseFit NM6'; }
+  else if (lot.includes('NM5A')) { model='EaseFit NM5A'; name='Beyond EaseFit NM5A'; }
+  else if (lot.includes('NM5'))  { model='EaseFit NM5';  name='Beyond EaseFit NM5'; }
+  else if (lot.includes('PMI'))  { model='EaseFit PMI';  name='Beyond EaseFit PMI'; }
+  else if (lot.includes('R20'))  { type='device'; model='R-20i'; name='Beyond R-20i CPAP'; }
+  else if (lot.includes('HP1'))  { type='accessory'; model='HP1'; name='Breathing Tube HP1'; }
 
   if (!name) return null;
 
-  if (lot.includes('NM5AL') || lot.includes('NM6L') || lot.endsWith('L')) size = 'L';
-  if (lot.includes('NM5AM') || lot.includes('NM6AM') || lot.endsWith('M')) size = 'M';
-  if (lot.includes('NM5AS') || lot.includes('NM6AS') || lot.endsWith('S')) size = 'S';
+  if (lot.match(/NM5AL|NM6L/)) size='L';
+  else if (lot.match(/NM5AM|NM6AM/)) size='M';
+  else if (lot.endsWith('L')) size='L';
+  else if (lot.endsWith('M')) size='M';
 
-  if (model === 'EaseFit NM5A' && size === 'L') ref = '78072';
-  if (model === 'EaseFit NM5A' && size === 'M') ref = 'PT78044';
-  if (model === 'EaseFit NM6A' && size === 'M') ref = '78091';
-  if (model === 'EaseFit NM6' && size === 'L') ref = '78084';
-  if (model === 'EaseFit NM5' && size === 'M') ref = '78066';
+  if (model==='EaseFit NM5A' && size==='L') ref='78072';
+  if (model==='EaseFit NM5A' && size==='M') ref='PT78044';
+  if (model==='EaseFit NM6A' && size==='M') ref='78091';
+  if (model==='EaseFit NM6'  && size==='L') ref='78084';
+  if (model==='EaseFit NM5'  && size==='M') ref='78066';
 
   return { name, brand, type, model, size, ref };
 }
 
+// ── Scanner Camera ───────────────────────────────────────────
 async function startScan() {
   if (scanOn || IS_PROCESSING) return;
   scanner = new Html5Qrcode('reader');
-
   try {
     await scanner.start(
       { facingMode:'environment' },
@@ -783,19 +694,12 @@ async function startScan() {
 }
 
 function stopScannerOnly() {
-  if (scanner) {
-    try { scanner.stop(); } catch(e) {}
-    try { scanner.clear(); } catch(e) {}
-  }
-  scanner = null;
-  scanOn = false;
+  if (scanner) { try { scanner.stop(); } catch(e) {} try { scanner.clear(); } catch(e) {} }
+  scanner = null; scanOn = false;
 }
 
-function setMode(m) {
-  MODE = m;
-  updateModeUI();
-}
-
+// ── UI ───────────────────────────────────────────────────────
+function setMode(m) { MODE = m; updateModeUI(); }
 function updateModeUI() {
   const isIn = MODE === 'in';
   document.getElementById('mIn').classList.toggle('on', isIn);
@@ -811,38 +715,29 @@ function updateModeUI() {
 
 function procM() {
   const c = document.getElementById('mc').value.trim();
-  if (c) {
-    parseCode(c);
-    document.getElementById('mc').value = '';
-  }
+  if (c) { parseCode(c); document.getElementById('mc').value = ''; }
 }
 
 function showResult(d) {
   const rows = [];
-
   if (d.p) {
     rows.push(['สินค้า', d.p.name]);
     rows.push(['แบรนด์', d.p.brand]);
     rows.push(['ประเภท', d.p.type]);
     rows.push(['รุ่น', d.p.model || '-']);
     if (d.p.size) rows.push(['Size', d.p.size]);
-    if (d.p.ref) rows.push(['REF', d.p.ref]);
+    if (d.p.ref)  rows.push(['REF', d.p.ref]);
   }
-
-  if (d.sn) rows.push(['SN', d.sn]);
-  if (d.lot) rows.push(['LOT', d.lot]);
-  if (d.gtin) rows.push(['GTIN', d.gtin]);
+  if (d.sn)      rows.push(['SN', d.sn]);
+  if (d.lot)     rows.push(['LOT', d.lot]);
+  if (d.gtin)    rows.push(['GTIN', d.gtin]);
   if (d.mfgDate) rows.push(['วันผลิต', d.mfgDate]);
-  if (d.expiry) rows.push(['หมดอายุ', d.expiry]);
-
+  if (d.expiry)  rows.push(['หมดอายุ', d.expiry]);
   if (!rows.length) rows.push(['รหัส', d.raw]);
 
-  document.getElementById('rkv').innerHTML = rows.map(([k,v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join('');
-
-  if (d.p && d.p.type) {
-    document.getElementById('iType').value = d.p.type;
-  }
-
+  document.getElementById('rkv').innerHTML =
+    rows.map(([k,v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join('');
+  if (d.p && d.p.type) document.getElementById('iType').value = d.p.type;
   document.getElementById('rbox').classList.add('on');
   document.getElementById('sf').style.display = 'block';
   updateModeUI();
@@ -856,121 +751,78 @@ function resetScan() {
   document.getElementById('noteI').value = '';
   stopScannerOnly();
   document.getElementById('reader').innerHTML = '';
-  if (HID_ENABLED) {
-    setTimeout(focusHidInput, 100);
-  } else {
-    document.getElementById('mc').focus();
-  }
+  if (HID_ENABLED) setTimeout(focusHidInput, 100);
+  else document.getElementById('mc').focus();
 }
 
 async function doAct(action) {
-  if (!LAST) return;
-  if (IS_PROCESSING) return;
+  if (!LAST || IS_PROCESSING) return;
   IS_PROCESSING = true;
-
-  const type = document.getElementById('iType').value;
-  const loc  = document.getElementById('locI').value.trim();
-  const note = document.getElementById('noteI').value.trim();
-  const name = LAST.p?.name || LAST.sn || LAST.raw;
+  const type  = document.getElementById('iType').value;
+  const loc   = document.getElementById('locI').value.trim();
+  const note  = document.getElementById('noteI').value.trim();
+  const name  = LAST.p?.name || LAST.sn || LAST.raw;
   const brand = LAST.p?.brand || '';
   const model = LAST.p?.model || '';
 
   if (action === 'out' && !loc) {
     toast('กรุณาระบุว่าเอาไปให้เซลล์คนไหน', 'warn');
-    IS_PROCESSING = false;
-    return;
+    IS_PROCESSING = false; return;
   }
-
   document.getElementById('bIn').disabled = true;
   document.getElementById('bOut').disabled = true;
   setPill('busy');
-
   try {
-    const payload = {
-      action,
-      type,
-      name,
-      brand,
-      model,
-      size: LAST.p?.size || '',
-      ref: LAST.p?.ref || '',
-      sn: LAST.sn,
-      lot: LAST.lot,
-      gtin: LAST.gtin,
-      mfgDate: LAST.mfgDate,
-      expiry: LAST.expiry,
-      location: loc,
-      note,
-      user: CUR_USER
-    };
-
-    const res = await apiPost(payload);
+    const res = await apiPost({
+      action, type, name, brand, model,
+      size: LAST.p?.size||'', ref: LAST.p?.ref||'',
+      sn: LAST.sn, lot: LAST.lot, gtin: LAST.gtin,
+      mfgDate: LAST.mfgDate, expiry: LAST.expiry,
+      location: loc, note, user: CUR_USER
+    });
     if (!res.ok) throw new Error(res.error || 'API error');
-
-    toast(action === 'in' ? '✅ บันทึกรับเข้าแล้ว' : `🔺 จ่ายออกให้ ${loc} แล้ว`, 'ok');
-
-    const keepLoc = loc;
-    setPill('ok');
-    resetScan();
-
-    if (action === 'out') {
+    toast(action==='in' ? '✅ บันทึกรับเข้าแล้ว' : `🔺 จ่ายออกให้ ${loc} แล้ว`, 'ok');
+    const keepLoc = loc; setPill('ok'); resetScan();
+    if (action==='out') {
       document.getElementById('locI').value = keepLoc;
       document.getElementById('sf').style.display = 'block';
     }
-
     await loadAll();
-  } catch(e) {
-    setPill('err');
-    toast('❌ ' + e.message, 'err');
-  } finally {
+  } catch(e) { setPill('err'); toast('❌ ' + e.message, 'err'); }
+  finally {
     document.getElementById('bIn').disabled = false;
     document.getElementById('bOut').disabled = false;
     IS_PROCESSING = false;
-    if (HID_ENABLED) {
-      setTimeout(focusHidInput, 120);
-    }
+    if (HID_ENABLED) setTimeout(focusHidInput, 120);
   }
 }
 
 function quickOut(item) {
   const who = prompt('จ่ายให้เซลล์คนไหน?');
   if (!who) return;
-
-  const payload = {
-    action: 'out',
-    type: item._type,
-    name: item['Product Name'] || '',
-    brand: item['Brand'] || '',
-    model: item['Model'] || '',
-    sn: item['Serial Number (SN)'] || '',
-    lot: item['LOT Number'] || '',
-    gtin: item['GTIN / Barcode'] || '',
-    location: who,
-    note: 'quick out from stock card',
-    user: CUR_USER
-  };
-
   setPill('busy');
-  apiPost(payload).then(res => {
-    if (!res.ok) throw new Error(res.error || 'API error');
-    toast('🔺 จ่ายออกให้ ' + who + ' แล้ว', 'ok');
-    setPill('ok');
-    return loadAll();
-  }).catch(e => {
-    setPill('err');
-    toast('❌ ' + e.message, 'err');
-  });
+  apiPost({
+    action:'out', type:item._type,
+    name:item['Product Name']||'', brand:item['Brand']||'', model:item['Model']||'',
+    sn:item['Serial Number (SN)']||'', lot:item['LOT Number']||'',
+    gtin:item['GTIN / Barcode']||'', location:who,
+    note:'quick out from stock card', user:CUR_USER
+  }).then(res => {
+    if (!res.ok) throw new Error(res.error||'API error');
+    toast('🔺 จ่ายออกให้ '+who+' แล้ว','ok'); setPill('ok'); return loadAll();
+  }).catch(e => { setPill('err'); toast('❌ '+e.message,'err'); });
 }
 
+// ── Render ───────────────────────────────────────────────────
 function updateStats() {
   document.getElementById('sDv').textContent = CACHE.device.length || 0;
-  document.getElementById('sMk').textContent = sumQty(CACHE.mask, 'Qty') || 0;
-  document.getElementById('sAc').textContent = sumQty(CACHE.accessory, 'Qty') || 0;
+  document.getElementById('sMk').textContent = sumQty(CACHE.mask,'Qty') || 0;
+  document.getElementById('sAc').textContent = sumQty(CACHE.accessory,'Qty') || 0;
 }
 
 function flt(type, el) {
   sflt = type;
-  document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
   if (el) el.classList.add('on');
   renderStock();
 }
@@ -978,131 +830,92 @@ function flt(type, el) {
 function renderStock() {
   const list = document.getElementById('stList');
   const items = [
-    ...CACHE.device.map(x => ({...x, _type:'device'})),
-    ...CACHE.mask.map(x => ({...x, _type:'mask'})),
-    ...CACHE.accessory.map(x => ({...x, _type:'accessory'}))
-  ].filter(x => sflt === 'all' ? true : x._type === sflt);
+    ...CACHE.device.map(x=>({...x,_type:'device'})),
+    ...CACHE.mask.map(x=>({...x,_type:'mask'})),
+    ...CACHE.accessory.map(x=>({...x,_type:'accessory'}))
+  ].filter(x => sflt==='all' ? true : x._type===sflt);
 
   if (!items.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-ic">📦</div><div>ยังไม่มีข้อมูล</div></div>`;
+    list.innerHTML=`<div class="empty"><div class="empty-ic">📦</div><div>ยังไม่มีข้อมูล</div></div>`;
     return;
   }
-
-  list.innerHTML = items.map((it, idx) => {
-    const badgeCls = it._type === 'device' ? 'bd2' : it._type === 'mask' ? 'bm' : 'ba';
-    const lot = it['LOT Number'] || '-';
-    const gtin = it['GTIN / Barcode'] || '-';
-    const sn = it['Serial Number (SN)'] || '-';
-    const qty = it['Qty'] || 1;
-    const loc = it['Location'] || it['Location / Hospital'] || '-';
-
-    return `
-      <div class="ic ${it._type}">
-        <div class="ic-top">
-          <div class="ic-nm">${escapeHtml(it['Product Name'] || '-')}</div>
-          <div class="bg ${badgeCls}">${escapeHtml(it._type)}</div>
-        </div>
-        <dl class="ic-kv">
-          <dt>Brand</dt><dd>${escapeHtml(it['Brand'] || '-')}</dd>
-          <dt>Model</dt><dd>${escapeHtml(it['Model'] || '-')}</dd>
-          <dt>SN</dt><dd>${escapeHtml(sn)}</dd>
-          <dt>LOT</dt><dd>${escapeHtml(lot)}</dd>
-          <dt>GTIN</dt><dd>${escapeHtml(gtin)}</dd>
-          <dt>Qty</dt><dd>${escapeHtml(qty)}</dd>
-          <dt>Location</dt><dd>${escapeHtml(loc)}</dd>
-        </dl>
-        <div class="ic-ft">
-          <div class="ic-meta">#${idx + 1}</div>
-          <button class="btn-co" data-idx="${idx}">🔺 จ่ายออก</button>
-        </div>
+  list.innerHTML = items.map((it,idx) => {
+    const bc = it._type==='device'?'bd2':it._type==='mask'?'bm':'ba';
+    return `<div class="ic ${it._type}">
+      <div class="ic-top">
+        <div class="ic-nm">${escapeHtml(it['Product Name']||'-')}</div>
+        <div class="bg ${bc}">${escapeHtml(it._type)}</div>
       </div>
-    `;
+      <dl class="ic-kv">
+        <dt>Brand</dt><dd>${escapeHtml(it['Brand']||'-')}</dd>
+        <dt>Model</dt><dd>${escapeHtml(it['Model']||'-')}</dd>
+        <dt>SN</dt><dd>${escapeHtml(it['Serial Number (SN)']||'-')}</dd>
+        <dt>LOT</dt><dd>${escapeHtml(it['LOT Number']||'-')}</dd>
+        <dt>GTIN</dt><dd>${escapeHtml(it['GTIN / Barcode']||'-')}</dd>
+        <dt>Qty</dt><dd>${escapeHtml(it['Qty']||1)}</dd>
+        <dt>Location</dt><dd>${escapeHtml(it['Location']||it['Location / Hospital']||'-')}</dd>
+      </dl>
+      <div class="ic-ft">
+        <div class="ic-meta">#${idx+1}</div>
+        <button class="btn-co" data-idx="${idx}">🔺 จ่ายออก</button>
+      </div>
+    </div>`;
   }).join('');
-
-  const buttons = list.querySelectorAll('.btn-co');
-  buttons.forEach((btn, i) => {
-    btn.onclick = function() { quickOut(items[i]); };
-  });
+  list.querySelectorAll('.btn-co').forEach((btn,i)=>{ btn.onclick=()=>quickOut(items[i]); });
 }
 
 function renderHist() {
   const list = document.getElementById('hiList');
   const items = CACHE.history || [];
-
   if (!items.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-ic">📋</div><div>ยังไม่มีประวัติ</div></div>`;
+    list.innerHTML=`<div class="empty"><div class="empty-ic">📋</div><div>ยังไม่มีประวัติ</div></div>`;
     return;
   }
-
   list.innerHTML = items.map(it => {
-    const action = String(it['Action'] || '');
-    const isIn = action === 'Stock In';
-    const icon = isIn ? '⬇️' : '⬆️';
-    const hdCls = isIn ? 'in' : 'out';
-    return `
-      <div class="hi">
-        <div class="hd ${hdCls}">${icon}</div>
-        <div>
-          <div class="hn">${escapeHtml(it['Product Name'] || '-')}</div>
-          <div class="hm">${escapeHtml(it['Action'] || '-')} • ${escapeHtml(it['Location / Recipient'] || '-')} • ${escapeHtml(it['Recorded By'] || '-')}</div>
-        </div>
-        <div class="ht">${escapeHtml(it['Date'] || '-')}<br>${escapeHtml(it['Time'] || '-')}</div>
+    const isIn = String(it['Action']||'')==='Stock In';
+    return `<div class="hi">
+      <div class="hd ${isIn?'in':'out'}">${isIn?'⬇️':'⬆️'}</div>
+      <div>
+        <div class="hn">${escapeHtml(it['Product Name']||'-')}</div>
+        <div class="hm">${escapeHtml(it['Action']||'-')} • ${escapeHtml(it['Location / Recipient']||'-')} • ${escapeHtml(it['Recorded By']||'-')}</div>
       </div>
-    `;
+      <div class="ht">${escapeHtml(it['Date']||'-')}<br>${escapeHtml(it['Time']||'-')}</div>
+    </div>`;
   }).join('');
 }
 
 function goTab(tab) {
-  ['scan','stock','hist','cfg'].forEach(k => {
-    document.getElementById('t-' + k).classList.toggle('on', k === tab);
-    document.getElementById('v-' + k).style.display = (k === tab ? 'block' : 'none');
+  ['scan','stock','hist','cfg'].forEach(k=>{
+    document.getElementById('t-'+k).classList.toggle('on',k===tab);
+    document.getElementById('v-'+k).style.display=(k===tab?'block':'none');
   });
 }
 
 function setPill(mode) {
   const el = document.getElementById('pill');
-  el.className = 'pill ' + mode;
-  el.textContent = mode === 'ok' ? '● Connected' : mode === 'busy' ? '● Working' : mode === 'err' ? '● Error' : '● Sheet';
+  el.className='pill '+mode;
+  el.textContent = mode==='ok'?'● Connected':mode==='busy'?'● Working':mode==='err'?'● Error':'● Sheet';
 }
 
-function toast(msg, type='ok') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'toast on ' + type;
+function toast(msg,type='ok') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast on '+type;
   clearTimeout(window.__toastTimer);
-  window.__toastTimer = setTimeout(() => { el.className = 'toast'; }, 2200);
-}
-
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
+  window.__toastTimer=setTimeout(()=>{el.className='toast';},2200);
 }
 
 function exportCSV() {
-  const items = CACHE.history || [];
-  if (!items.length) {
-    toast('ยังไม่มีประวัติให้ export', 'warn');
-    return;
-  }
-
+  const items = CACHE.history||[];
+  if (!items.length) { toast('ยังไม่มีประวัติให้ export','warn'); return; }
   const headers = Object.keys(items[0]);
-  const csv = [
-    headers.join(','),
-    ...items.map(row => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','))
-  ].join('\n');
-
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'skyline-history.csv';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const csv=[headers.join(','),...items.map(row=>
+    headers.map(h=>`"${String(row[h]||'').replace(/"/g,'""')}"`).join(',')
+  )].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='skyline-history.csv';
+  document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
 </script>
