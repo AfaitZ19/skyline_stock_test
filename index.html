@@ -848,6 +848,14 @@ async function doAct(action) {
     return;
   }
 
+  if (action === 'in') {
+  const checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
+  if (checkRes.exists) {
+    toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
+    IS_PROCESSING = false;
+    return;
+  }
+}
   document.getElementById('bIn').disabled = true;
   document.getElementById('bOut').disabled = true;
   setPill('busy');
