@@ -850,6 +850,7 @@ async function doAct(action) {
 
   if (action === 'in') {
   const checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
+  alert('SN=' + LAST.sn + ' exists=' + checkRes.exists);
     if (checkRes.exists) {
     toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
     IS_PROCESSING = false;
