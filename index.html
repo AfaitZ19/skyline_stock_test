@@ -843,20 +843,6 @@ async function doAct(action) {
     return;
   }
 
-  // ตรวจสอบซ้ำเฉพาะตอน stock in
-  if (action === 'in') {
-    try {
-      const checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
-      if (checkRes.exists) {
-        toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
-        IS_PROCESSING = false;
-        return;
-      }
-    } catch(e) {
-      // check ไม่ได้ก็ปล่อยผ่าน ไม่ block การบันทึก
-    }
-  }
-
   document.getElementById('bIn').disabled = true;
   document.getElementById('bOut').disabled = true;
   setPill('busy');
@@ -881,10 +867,15 @@ async function doAct(action) {
     };
 
     const res = await apiPost(payload);
-    if (!res.ok) throw new Error(res.error || 'API error');
-
-    toast(action === 'in' ? '✅ บันทึกรับเข้าแล้ว' : `🔺 จ่ายออกให้ ${loc} แล้ว`, 'ok');
-
+    if (!res.ok) {
+      if (res.error === 'DUPLICATE') {
+        toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
+        IS_PROCESSING = false;
+        return;
+      }
+      throw new Error(res.error || 'API error');
+    }
+    
     const keepLoc = loc;
     setPill('ok');
     resetScan();
