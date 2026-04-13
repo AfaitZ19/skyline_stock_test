@@ -848,14 +848,20 @@ async function doAct(action) {
     return;
   }
 
-  if (action === 'in') {
-  const checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
+  let checkRes;
+try {
+  checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
   alert('SN=' + LAST.sn + ' exists=' + checkRes.exists);
-    if (checkRes.exists) {
-    toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
-    IS_PROCESSING = false;
-    return;
-  }
+} catch(e) {
+  alert('check error: ' + e.message);
+  IS_PROCESSING = false;
+  return;
+}
+if (checkRes.exists) {
+  toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
+  IS_PROCESSING = false;
+  return;
+}
 }
   document.getElementById('bIn').disabled = true;
   document.getElementById('bOut').disabled = true;
