@@ -150,7 +150,7 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
       <input class="inp" id="setupPass" type="password" placeholder="รหัสผ่าน" style="margin-bottom:0">
     </div>
     <button class="btn-p" onclick="doSetup()">เข้าสู่ระบบ</button>
-     </div>
+  </div>
 </div>
 
 <div id="scApp" class="sc">
@@ -258,7 +258,7 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
         <h3>📖 วิธีใช้</h3>
         <ol class="steps">
           <li>ถ้าจะพิมพ์เองหรือใช้คีย์บอร์ดมือถือ ไม่ต้องเปิดโหมดเครื่องยิง</li>
-          <li>ถ้าจะใช้เครื่องยิง Bluetooth ให้กด “โหมดเครื่องยิง” ก่อน</li>
+          <li>ถ้าจะใช้เครื่องยิง Bluetooth ให้กด "โหมดเครื่องยิง" ก่อน</li>
           <li>ตั้ง scanner เป็น HID / Keyboard mode</li>
           <li>ตั้ง suffix = Enter</li>
           <li>โหมดรับเข้า = ยิงแล้วเข้าเลย</li>
@@ -574,54 +574,49 @@ function parseCode(raw) {
   const gtin = cleaned.match(/^01(\d{14})/);
   if (gtin) d.gtin = gtin[1];
 
-  // 🔥 หา mfg date จากตำแหน่ง GTIN แบบ fix
   const idx01 = cleaned.indexOf('01');
   if (idx01 !== -1 && cleaned.length >= idx01 + 24) {
-  const possible = cleaned.substr(idx01 + 16, 8); // 11 + 6 digits
-  if (possible.startsWith('11')) {
-  const rawDate = possible.substr(2, 6);
-  if (/^\d{6}$/.test(rawDate)) {
-  d.mfgDate = fd(rawDate);
+    const possible = cleaned.substr(idx01 + 16, 8);
+    if (possible.startsWith('11')) {
+      const rawDate = possible.substr(2, 6);
+      if (/^\d{6}$/.test(rawDate)) {
+        d.mfgDate = fd(rawDate);
+      }
     }
   }
-}
 
-  // 🔥 หา SN แบบ fix
   const idx21 = cleaned.indexOf('21');
   if (idx21 !== -1) {
-  let snRaw = cleaned.substring(idx21 + 2);
-
-  const stopIdx = snRaw.search(/10|11|17/);
-  if (stopIdx !== -1) {
-    snRaw = snRaw.substring(0, stopIdx);
+    let snRaw = cleaned.substring(idx21 + 2);
+    const stopIdx = snRaw.search(/10|11|17/);
+    if (stopIdx !== -1) {
+      snRaw = snRaw.substring(0, stopIdx);
+    }
   }
 
-}
-if (!d.lot) {
-  // รองรับทั้ง (01)xxxxxxxxxxxxxxxx และ 01xxxxxxxxxxxxxxxxx
-  const hasParens = cleaned.includes('(01)');
-  const gtinEnd = hasParens
-    ? cleaned.indexOf('(01)') + 4 + 14 + 4  // (01) + 14 digits + (10)
-    : cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
-  const afterGtin = cleaned.slice(gtinEnd);
-  const lot = afterGtin.match(/(?:\(10\)|10)(BY-[A-Z0-9\-]+)/)
-           || afterGtin.match(/(?:\(10\)|10)([A-Z0-9\-]{6,}?)(?:\(11\)|\(21\)|11|21|17|$)/);
-  if (lot) d.lot = normalizeLot(lot[1]);
-}
-  
+  if (!d.lot) {
+    const hasParens = cleaned.includes('(01)');
+    const gtinEnd = hasParens
+      ? cleaned.indexOf('(01)') + 4 + 14 + 4
+      : cleaned.indexOf('01') !== -1 ? cleaned.indexOf('01') + 18 : 0;
+    const afterGtin = cleaned.slice(gtinEnd);
+    const lot = afterGtin.match(/(?:\(10\)|10)(BY-[A-Z0-9\-]+)/)
+             || afterGtin.match(/(?:\(10\)|10)([A-Z0-9\-]{6,}?)(?:\(11\)|\(21\)|11|21|17|$)/);
+    if (lot) d.lot = normalizeLot(lot[1]);
+  }
+
   if (!d.gtin && cleaned.startsWith('01') && cleaned.length >= 16) {
     const maybeGtin = cleaned.slice(2, 16);
     if (/^\d{14}$/.test(maybeGtin)) d.gtin = maybeGtin;
   }
 
-
   if (!d.sn) {
-    const idx21 = cleaned.indexOf('21');
+    const idx21b = cleaned.indexOf('21');
     const idx10 = cleaned.indexOf('10');
-    if (idx21 !== -1 && idx10 !== -1 && idx21 < idx10) {
-      d.sn = cleaned.slice(idx21 + 2, idx10);
-    } else if (idx21 !== -1) {
-      d.sn = cleaned.slice(idx21 + 2);
+    if (idx21b !== -1 && idx10 !== -1 && idx21b < idx10) {
+      d.sn = cleaned.slice(idx21b + 2, idx10);
+    } else if (idx21b !== -1) {
+      d.sn = cleaned.slice(idx21b + 2);
     }
   }
 
@@ -661,7 +656,7 @@ function lookup(d) {
   { gtin:'6958949937687', name:'Beyond EaseFit NM5A', brand:'Hunan Beyond', type:'mask', model:'EaseFit NM5A', size:'L', ref:'78072' },
   { gtin:'6958949932057', name:'Breathing Tube HP1', brand:'Hunan Beyond', type:'accessory', model:'HP1', ref:'74001EU' },
   { gtin:'6958949927319', name:'Beyond R-20i CPAP', brand:'Hunan Beyond', type:'device', model:'R-20i' },
-  { gtin:'6958949927425', name:'Beyond R-30F BPAP', brand:'Hunan Beyond', type:'device', model:'R-30F' },  
+  { gtin:'6958949927425', name:'Beyond R-30F BPAP', brand:'Hunan Beyond', type:'device', model:'R-30F' },
   { sn_exact:'26B17',  name:'APEX Unknown Device 26B17',  brand:'APEX Medical', type:'device', model:'Unknown' },
   { sn_exact:'25J100', name:'APEX Unknown Device 25J100', brand:'APEX Medical', type:'device', model:'Unknown' },
   { sn_exact:'26B39',  name:'APEX Unknown Device 26B39',  brand:'APEX Medical', type:'device', model:'Unknown' },
@@ -686,7 +681,7 @@ function lookup(d) {
   { gtin:'6958949927371', name:'Beyond R-25V BPAP', brand:'Hunan Beyond', type:'device', model:'R-25V' },
   { lot_pfx:'BY-C2603R25V', name:'Beyond R-25V BPAP', brand:'Hunan Beyond', type:'device', model:'R-25V' },
   { sn_pfx:'IEEC3C', name:'Beyond R-25V BPAP', brand:'Hunan Beyond', type:'device', model:'R-25V' },
-];
+  ];
 
   for (const p of db) {
     if (p.gtin && gtinRaw === p.gtin) return p;
@@ -848,21 +843,20 @@ async function doAct(action) {
     return;
   }
 
-  let checkRes;
-try {
-  checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
-  alert('SN=' + LAST.sn + ' exists=' + checkRes.exists);
-} catch(e) {
-  alert('check error: ' + e.message);
-  IS_PROCESSING = false;
-  return;
-}
-if (checkRes.exists) {
-  toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
-  IS_PROCESSING = false;
-  return;
+  // ตรวจสอบซ้ำเฉพาะตอน stock in
+  if (action === 'in') {
+    try {
+      const checkRes = await apiPost({ action:'check', type, sn:LAST.sn, lot:LAST.lot });
+      if (checkRes.exists) {
+        toast('⚠️ สินค้านี้มีในสต็อกแล้ว', 'warn');
+        IS_PROCESSING = false;
+        return;
+      }
+    } catch(e) {
+      // check ไม่ได้ก็ปล่อยผ่าน ไม่ block การบันทึก
+    }
+  }
 
-}
   document.getElementById('bIn').disabled = true;
   document.getElementById('bOut').disabled = true;
   setPill('busy');
