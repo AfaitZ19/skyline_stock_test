@@ -349,6 +349,8 @@ function focusManualInput() {
 function processScannerText(text) {
   const code = String(text || '').trim();
   if (!code) return;
+  if (IS_PROCESSING) return;  // ← เพิ่มบรรทัดนี้
+
 
   parseCode(code);
 
