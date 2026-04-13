@@ -150,8 +150,7 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
       <input class="inp" id="setupPass" type="password" placeholder="รหัสผ่าน" style="margin-bottom:0">
     </div>
     <button class="btn-p" onclick="doSetup()">เข้าสู่ระบบ</button>
-    <p style="font-size:11px;color:var(--mu);text-align:center;margin-top:8px">รหัสผ่าน: stock=1234 &nbsp;|&nbsp; admin=admin123</p>
-  </div>
+     </div>
 </div>
 
 <div id="scApp" class="sc">
@@ -289,7 +288,6 @@ body{font-family:'Sarabun',-apple-system,sans-serif;background:var(--bg);color:v
 <div class="toast" id="toast"></div>
 
 <script>
-const USERS = { stock:'1234', admin:'admin123' };
 let API_URL  = localStorage.getItem('skl_api') || '';
 let CUR_USER = '';
 let MODE = 'in', LAST = null, scanner = null, scanOn = false, sflt = 'all';
@@ -425,7 +423,8 @@ async function doSetup() {
 
   if (!url) { showSetupErr('กรุณาใส่ Apps Script URL'); return; }
   if (!user) { showSetupErr('กรุณาใส่ชื่อผู้ใช้'); return; }
-  if (!USERS[user] || USERS[user] !== pass) { showSetupErr('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
+  const loginRes = await apiFetch(url + '?action=login&user=' + encodeURIComponent(user) + '&pass=' + encodeURIComponent(pass));
+  if (!loginRes.ok) { showSetupErr(loginRes.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
 
   errEl.style.display = 'none';
   setPill('busy');
